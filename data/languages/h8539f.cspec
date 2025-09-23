@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<compiler_spec>
+  <data_organization>
+    <absolute_max_alignment value="4"/>
+    <machine_alignment value="2"/>
+    <default_alignment value="2"/>
+    <default_pointer_alignment value="2"/>
+    <pointer_size value="2"/>
+    <pointer_shift value="0"/>
+    <char_type signed="true"/>
+    <char_size value="1"/>
+    <wchar_size value="2"/>
+    <short_size value="2"/>
+    <integer_size value="2"/>
+    <long_size value="4"/>
+    <long_long_size value="8"/>
+    <float_size value="4"/>
+    <double_size value="8"/>
+    <long_double_size value="8"/>
+  </data_organization>
+
+  <stackpointer register="sp" space="ram" growth="negative"/>
+
+  <returnaddress>
+    <register name="pc"/>
+  </returnaddress>
+
+  <default_proto>
+    <prototype name="default" extrapop="0" stackshift="0" strategy="standard">
+      <input>
+        <pentry minsize="2" maxsize="500" align="2">
+          <addr offset="2" space="stack"/>
+      	</pentry>
+      </input>
+      <output>
+        <pentry minsize="2" maxsize="2">
+          <register name="r0"/>
+        </pentry>
+      </output>
+      <returnaddress>
+        <register name="pc"/>
+      </returnaddress>
+      <unaffected>
+        <register name="r1"/>
+      </unaffected>
+    </prototype>
+  </default_proto>
+
+  <prototype name="cdecl" extrapop="0" stackshift="0" strategy="standard">
+    <input>
+      <pentry minsize="2" maxsize="500" align="2">
+        <addr offset="2" space="stack"/>
+      </pentry>
+    </input>
+    <output>
+      <pentry minsize="2" maxsize="2">
+        <register name="r0"/>
+      </pentry>
+    </output>
+    <returnaddress>
+      <register name="pc"/>
+    </returnaddress>
+  </prototype>
+</compiler_spec>

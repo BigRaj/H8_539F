@@ -1,0 +1,118 @@
+# H8/539F SLEIGH specification (starter)
+# Compatible with Ghidra 11.0.3
+
+define endian = big;
+
+define alignment = 2;
+
+# Memory spaces
+define space ram type=ram_space size=2 default;
+define space register type=register_space size=4;
+
+# -------------------------
+# Register definitions
+# -------------------------
+# General purpose (16-bit)
+define register offset=0 size=2 [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# Extended (32-bit)
+define register offset=32 size=4 [ er0 er1 er2 er3 er4 er5 er6 er7 ];
+
+# Control
+define register offset=64 size=2 [ sp fp ];
+define register offset=72 size=4 [ pc ];
+define register offset=76 size=1 [ ccr ];
+
+# Flags (aliases – not bound yet, but declared)
+define register offset=80 size=1 [ C V Z N H I0 I1 I2 ];
+
+# Page / bank registers
+define register offset=88 size=1 [ dp ep tp br ];
+
+# -------------------------
+# Tokens
+# -------------------------
+define token instr16(16)
+	opcode_8 = (8,15)
+	imm8     = (0, 7)
+	reg3     = (5, 7)
+	imm16    = (0,15)
+;
+
+define token instr32(32)
+	opcode1_32 = (24,31)
+	address24  = ( 0,23)
+;
+
+define pcodeop nop;
+
+# -------------------------
+# Instructions
+# -------------------------
+# NOP
+:nop is opcode_8=0x00 {
+	nop();
+}
+
+# RTS (return from subroutine)
+:rts          is opcode_8=0x57 {
+	pc = *:2 sp;
+	sp = sp + 2;
+	return [pc];
+}
+
+# MOV.B #imm8 -> r0
+:mov_r0_imm8  is opcode_8=0x79 & imm8 {
+	local tmp:2;
+	tmp = imm8;
+	r0 = tmp;
+	Z = (r0 == 0);
+	N = (r0 s< 0);
+	V = 0;
+}
+
+# MOV.B #imm8 -> r1
+:mov_r1_imm8  is opcode_8=0x78 & imm8 {
+	local tmp:2;
+	tmp = imm8;
+	r1 = tmp;
+	Z = (r1 == 0);
+	N = (r1 s< 0);
+	V = 0;
+}
+
+# MOV.W #imm16 -> r0
+:mov_w_r0     is opcode_8=0x7A & imm16 {
+	local tmp16:2;
+	tmp16 = imm16;
+	r0 = tmp16;
+	Z = (r0 == 0);
+	N = (r0 s< 0);
+	V = 0;
+}
+
+# MOV.W #imm16 -> r1
+:mov_w_r1     is opcode_8=0x7B & imm16 {
+	local tmp16:2;
+	tmp16 = imm16;
+	r1 = tmp16;
+	Z = (r1 == 0);
+	N = (r1 s< 0);
+	V = 0;
+}
+
+# JSR (24-bit absolute)
+:jsr @address24  is opcode1_32=0x01 & address24 {
+	*:2 (sp - 2) = pc;
+	sp = sp - 2;
+	pc = &address24;
+	call [address24:3];
+}
+
+# AND r0,r1 (simple example)
+:and_r0_r1    is opcode_8=0x50 {
+	r0 = r0 & r1;
+	V = 0;
+	Z = (r0 == 0);
+	N = (r0 s< 0);
+}
