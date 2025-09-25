@@ -3,13 +3,13 @@
 <language_definitions>
    <language processor="H8"
             endian="big"
-            size="16"
+            size="20"
             variant="H8/539F"
             version="1.0"
             slafile="h8539f.sla"
             processorspec="h8539f.pspec"
-            id="H8:BE:16:H8539F">
-    <description>H8/539F Processor</description>
+            id="H8:BE:20:H8539F">
+    <description>H8/539F Processor (20-bit address space)</description>
     <compiler name="default" spec="h8539f.cspec" id="default"/>
   </language> 
 </language_definitions>

@@ -2,160 +2,30 @@
 
 <processor_spec>
   <default_memory_blocks>
-    <memory_block name="ONCHIP_ROM" start_address="0x00000" length="0x20000" initialized="true"/>
-    <memory_block name="ONCHIP_RAM" start_address="0x00EE80" length="0x01000" initialized="false"/>
-    <memory_block name="SFR" start_address="0x00FE00" length="0x00200" initialized="false"/>
+    <memory_block name="ONCHIP_ROM" start_address="ram:000000" length="0x20000" mode="r" initialized="true"/>
+    <memory_block name="ONCHIP_RAM" start_address="ram:00EE80" length="0x1000" mode="rw" initialized="false"/>
+    <memory_block name="SFR" start_address="ram:00FE00" length="0x200" mode="rw" initialized="false"/>
   </default_memory_blocks>
   <programcounter register="pc"/>
-  <register_data>
-    <register name="r0"/>
-    <register name="r1"/>
-    <register name="r2"/>
-    <register name="r3"/>
-    <register name="r4"/>
-    <register name="r5"/>
-    <register name="r6"/>
-    <register name="r7"/>
-    <register name="er0"/>
-    <register name="er1"/>
-    <register name="er2"/>
-    <register name="er3"/>
-    <register name="er4"/>
-    <register name="er5"/>
-    <register name="er6"/>
-    <register name="er7"/>
-    <register name="sp"/>
-    <register name="fp"/>
-    <register name="pc"/>
-    <register name="ccr"/>
-    <register name="C"/>
-    <register name="V"/>
-    <register name="Z"/>
-    <register name="N"/>
-    <register name="H"/>
-    <register name="I0"/>
-    <register name="I1"/>
-    <register name="I2"/>
-    <register name="dp"/>
-    <register name="ep"/>
-    <register name="tp"/>
-    <register name="br"/>
-  </register_data>
   <default_symbols>
-    <symbol name="RESET_VEC" address="0x0000" entry="true" description="Reset vector"/>
-    <symbol name="NMI_VEC" address="0x0004" entry="true" description="NMI vector"/>
-    <symbol name="TRAP_VEC" address="0x0008" entry="true" description="TRAP / software vector (if present)"/>
-    <symbol name="IRQ0_VEC" address="0x000C" entry="true"/>
-    <symbol name="IRQ1_VEC" address="0x0010" entry="true"/>
-    <symbol name="IRQ2_VEC" address="0x0014" entry="true"/>
-    <symbol name="IRQ3_VEC" address="0x0018" entry="true"/>
-    <symbol name="IRQ4_VEC" address="0x001C" entry="true"/>
-    <symbol name="IRQ5_VEC" address="0x0020" entry="true"/>
-    <symbol name="IRQ6_VEC" address="0x0024" entry="true"/>
-    <symbol name="IRQ7_VEC" address="0x0028" entry="true"/>
-    <symbol name="TIMER0_VEC" address="0x002C" entry="true"/>
-    <symbol name="TIMER1_VEC" address="0x0030" entry="true"/>
-    <symbol name="TIMER2_VEC" address="0x0034" entry="true"/>
-    <symbol name="TIMER3_VEC" address="0x0038" entry="true"/>
-    <symbol name="WDT_VEC" address="0x003C" entry="true" description="Watchdog timer vector"/>
-    <symbol name="ADC_VEC" address="0x0040" entry="true"/>
-    <symbol name="SCI0_RX_VEC" address="0x0044" entry="true"/>
-    <symbol name="SCI0_TX_VEC" address="0x0048" entry="true"/>
-    <symbol name="SCI1_RX_VEC" address="0x004C" entry="true"/>
-    <symbol name="SCI1_TX_VEC" address="0x0050" entry="true"/>
-    <symbol name="DTC0_VEC" address="0x0054" entry="true"/>
-    <symbol name="DTC1_VEC" address="0x0058" entry="true"/>
-    <symbol name="FLMCR"   address="0x0FEE0" size="1" description="Flash Memory Control Register"/>
-    <symbol name="FLMCR2"  address="0x0FEE1" size="1" description="Flash mode / control (variant)"/>
-    <symbol name="EBR1"    address="0x0FEE2" size="1" description="Erase Block Register 1"/>
-    <symbol name="EBR2"    address="0x0FEE3" size="1" description="Erase Block Register 2"/>
-    <symbol name="FLMDR"   address="0x0FEE4" size="1" description="Flash Mode/Data Register (example)"/>
-    <symbol name="FLMER"   address="0x0FEEC" size="1" description="Flash Memory Emulation Register"/>
-    <symbol name="FLMSR"   address="0x0FEED" size="1" description="Flash Memory Status Register"/>
-    <symbol name="RAMCR"   address="0x0FF15" size="1" description="RAM Control Register (enable/overlap)"/>
-    <symbol name="RAMTEST" address="0x0FF16" size="1" description="RAM Test/Control (if present)"/>
-    <symbol name="MDCR"    address="0x0FF19" size="1" description="Mode Control Register"/>
-    <symbol name="WCR"     address="0x0FE14" size="1" description="Wait Control Register"/>
-    <symbol name="SYSCON"  address="0x0FF1C" size="1" description="System Control Register (misc)"/>
-    <symbol name="WDTCSR"  address="0x0FF1A" size="1" description="Watchdog Timer Control/Status"/>
-    <symbol name="RSTCSR"  address="0x0FF1B" size="1" description="Reset Status / Cause Register"/>
-    <symbol name="SMR0"    address="0x0FF00" size="1" description="SCI0 Mode Register"/>
-    <symbol name="BRR0"    address="0x0FF01" size="1" description="SCI0 Baud Rate Register"/>
-    <symbol name="SCR0"    address="0x0FF02" size="1" description="SCI0 Control Register"/>
-    <symbol name="TDR0"    address="0x0FF03" size="1" description="SCI0 Transmit Data Register"/>
-    <symbol name="SSR0"    address="0x0FF04" size="1" description="SCI0 Status Register"/>
-    <symbol name="RDR0"    address="0x0FF05" size="1" description="SCI0 Receive Data Register"/>
-    <symbol name="SMR1"    address="0x0FF10" size="1" description="SCI1 Mode Register"/>
-    <symbol name="BRR1"    address="0x0FF11" size="1" description="SCI1 Baud Rate Register"/>
-    <symbol name="SCR1"    address="0x0FF12" size="1" description="SCI1 Control Register"/>
-    <symbol name="TDR1"    address="0x0FF13" size="1" description="SCI1 Transmit Data Register"/>
-    <symbol name="SSR1"    address="0x0FF14" size="1" description="SCI1 Status Register"/>
-    <symbol name="RDR1"    address="0x0FF15" size="1" description="SCI1 Receive Data Register"/>
-    <symbol name="SMR2"    address="0x0FF20" size="1" description="SCI2 Mode Register (variant)"/>
-    <symbol name="BRR2"    address="0x0FF21" size="1" description="SCI2 Baud"/>
-    <symbol name="SCR2"    address="0x0FF22" size="1" description="SCI2 Control"/>
-    <symbol name="SMR3"    address="0x0FF24" size="1" description="SCI3 Mode Register (variant)"/>
-    <symbol name="P0DR"    address="0x0FF30" size="1" description="Port 0 Data Register"/>
-    <symbol name="P0DDR"   address="0x0FF31" size="1" description="Port 0 Data Direction Register"/>
-    <symbol name="P0CR"    address="0x0FF32" size="1" description="Port 0 Control Register"/>
-    <symbol name="P1DR"    address="0x0FF33" size="1" description="Port 1 Data Register"/>
-    <symbol name="P1DDR"   address="0x0FF34" size="1" description="Port 1 DDR"/>
-    <symbol name="P1CR"    address="0x0FF35" size="1" description="Port 1 CR"/>
-    <symbol name="P2DR"    address="0x0FF36" size="1" description="Port 2 Data Register"/>
-    <symbol name="P2DDR"   address="0x0FF37" size="1" description="Port 2 DDR"/>
-    <symbol name="P2CR"    address="0x0FF38" size="1" description="Port 2 CR"/>
-    <symbol name="P3DR"    address="0x0FF39" size="1" description="Port 3 Data Register"/>
-    <symbol name="P3DDR"   address="0x0FF3A" size="1" description="Port 3 DDR"/>
-    <symbol name="P3CR"    address="0x0FF3B" size="1" description="Port 3 CR"/>
-    <symbol name="P4DR"    address="0x0FF3C" size="1" description="Port 4 Data Register"/>
-    <symbol name="P4DDR"   address="0x0FF3D" size="1" description="Port 4 DDR"/>
-    <symbol name="P4CR"    address="0x0FF3E" size="1" description="Port 4 CR"/>
-    <symbol name="P5DR"    address="0x0FF3F" size="1" description="Port 5 Data Register"/>
-    <symbol name="P5DDR"   address="0x0FF40" size="1" description="Port 5 DDR"/>
-    <symbol name="P5CR"    address="0x0FF41" size="1" description="Port 5 CR"/>
-    <symbol name="P6DR"    address="0x0FF42" size="1" description="Port 6 Data Register"/>
-    <symbol name="P6DDR"   address="0x0FF43" size="1" description="Port 6 DDR"/>
-    <symbol name="P6CR"    address="0x0FF44" size="1" description="Port 6 CR"/>
-    <symbol name="P7DR"    address="0x0FF45" size="1" description="Port 7 Data Register"/>
-    <symbol name="P7DDR"   address="0x0FF46" size="1" description="Port 7 DDR"/>
-    <symbol name="P7CR"    address="0x0FF47" size="1" description="Port 7 CR"/>
-    <symbol name="PADR"    address="0x0FF48" size="1" description="Port A Data Register"/>
-    <symbol name="PADDR"   address="0x0FF49" size="1" description="Port A Data Direction"/>
-    <symbol name="ADCSR"   address="0x0FF50" size="1" description="A/D Control/Status Register"/>
-    <symbol name="ADDR0"   address="0x0FF51" size="2" description="A/D Data Register 0"/>
-    <symbol name="ADDR1"   address="0x0FF53" size="2" description="A/D Data Register 1"/>
-    <symbol name="ADDR2"   address="0x0FF55" size="2" description="A/D Data Register 2"/>
-    <symbol name="ADDR3"   address="0x0FF57" size="2" description="A/D Data Register 3"/>
-    <symbol name="ADDR4"   address="0x0FF59" size="2" description="A/D Data Register 4"/>
-    <symbol name="ADDR5"   address="0x0FF5B" size="2" description="A/D Data Register 5"/>
-    <symbol name="ADDR6"   address="0x0FF5D" size="2" description="A/D Data Register 6"/>
-    <symbol name="ADDR7"   address="0x0FF5F" size="2" description="A/D Data Register 7"/>
-    <symbol name="ADDR8"   address="0x0FF61" size="2" description="A/D Data Register 8"/>
-    <symbol name="ADDR9"   address="0x0FF63" size="2" description="A/D Data Register 9"/>
-    <symbol name="ADDR10"  address="0x0FF65" size="2" description="A/D Data Register 10"/>
-    <symbol name="ADDR11"  address="0x0FF67" size="2" description="A/D Data Register 11"/>
-    <symbol name="TIER"    address="0x0FE60" size="1" description="Timer Interrupt Enable Register"/>
-    <symbol name="TSR"     address="0x0FE61" size="1" description="Timer Status Register"/>
-    <symbol name="TCR0"    address="0x0FE30" size="1" description="Timer Control Register 0"/>
-    <symbol name="TCNT0"   address="0x0FE32" size="2" description="Timer Counter 0"/>
-    <symbol name="TCMP0"   address="0x0FE34" size="2" description="Timer Compare 0"/>
-    <symbol name="TCR1"    address="0x0FE40" size="1" description="Timer Control Register 1"/>
-    <symbol name="TCNT1"   address="0x0FE42" size="2" description="Timer Counter 1"/>
-    <symbol name="TCMP1"   address="0x0FE44" size="2" description="Timer Compare 1"/>
-    <symbol name="TCR2"    address="0x0FE50" size="1" description="Timer Control Register 2"/>
-    <symbol name="TCNT2"   address="0x0FE52" size="2" description="Timer Counter 2"/>
-    <symbol name="TCMP2"   address="0x0FE54" size="2" description="Timer Compare 2"/>
-    <symbol name="TCR3"    address="0x0FE60" size="1" description="Timer Control Register 3"/>
-    <symbol name="TCNT3"   address="0x0FE62" size="2" description="Timer Counter 3"/>
-    <symbol name="TCMP3"   address="0x0FE64" size="2" description="Timer Compare 3"/>
-    <symbol name="DTCEN"   address="0x0FE70" size="1" description="DTC Enable / Control"/>
-    <symbol name="DTCSTAT" address="0x0FE71" size="1" description="DTC Status"/>
-    <symbol name="BSC_CTRL" address="0x0FFE0" size="2" description="Bus Controller registers (group)"/>
-    <symbol name="WSC"     address="0x0FF80" size="1" description="Wait-state control / WSC"/>
-    <symbol name="RTC_CTRL" address="0x0FF90" size="1" description="RTC Control (variant)"/>
-    <symbol name="GPIO_CTRL" address="0x0FF91" size="1" description="GPIO Control (example)"/>
-    <symbol name="PROT"    address="0x0FFB0" size="1" description="Protection register (example)"/>
-    <symbol name="EMU_CTRL" address="0x0FFB1" size="1" description="Emulation control (flash emulation)"/>
-    <symbol name="FLMCR_P" address="0x0FEE0" size="1" description="FLMCR alias"/>
+    <symbol name="P1DDR" address="ram:00FE10"/>
+    <symbol name="P1DR"  address="ram:00FE11"/>
+    <symbol name="P2DDR" address="ram:00FE12"/>
+    <symbol name="P2DR"  address="ram:00FE13"/>
+    <symbol name="TCR0"  address="ram:00FE40"/>
+    <symbol name="TCR1"  address="ram:00FE41"/>
+    <symbol name="TCR2"  address="ram:00FE42"/>
+    <symbol name="TCR3"  address="ram:00FE43"/>
+    <symbol name="TCR4"  address="ram:00FE44"/>
+    <symbol name="TCR5"  address="ram:00FE45"/>
+    <symbol name="TCR6"  address="ram:00FE46"/>
+    <symbol name="TCR7"  address="ram:00FE47"/>
+    <symbol name="TSTR"  address="ram:00FE50"/>
+    <symbol name="TSNC"  address="ram:00FE51"/>
+    <symbol name="TMDR"  address="ram:00FE52"/>
+    <symbol name="TOLR"  address="ram:00FE53"/>
+    <symbol name="TOER"  address="ram:00FE54"/>
+    <symbol name="IER"   address="ram:00FE60"/>
+    <symbol name="ISR"   address="ram:00FE61"/>
   </default_symbols>
 </processor_spec>

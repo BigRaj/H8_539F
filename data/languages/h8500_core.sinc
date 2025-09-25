@@ -1,0 +1,105 @@
+#
+# h8500_core.sinc
+# Core register / token / helper macros for H8/539F (fixed for SLEIGH compilation)
+#
+
+define endian = big;
+define alignment = 2;
+
+# declare nop pcode operation so 'nop()' usage is valid
+define pcodeop nop;
+
+# Memory spaces
+define space ram type=ram_space size=3 default;        # 3-byte effective addresses (EP/DP + 16-bit disp)
+define space register type=register_space size=2;      # default register varnode size = 2 bytes
+
+# General-purpose 16-bit registers (r0..r7)
+define register offset=0x00 size=2 [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# 32-bit extended registers (er0..er7) - used for 32-bit operations / returns
+define register offset=0x20 size=4 [ er0 er1 er2 er3 er4 er5 er6 er7 ];
+
+# Stack / frame pointer
+define register offset=0x40 size=2 [ sp fp ];
+
+# Program counter (4 byte internal)
+define register offset=0x48 size=4 [ pc ];
+
+# Condition code / CCR - 1 byte
+define register offset=0x60 size=1 [ ccr ];
+
+# Page/bank registers (1 byte)
+define register offset=0x70 size=1 [ dp ep tp br ];
+
+# Individual CCR flags (mapped to bits in ccr) - convenient aliases
+@define I_FLAG  "ccr[7,1]"
+@define UI_FLAG "ccr[6,1]"
+@define H_FLAG  "ccr[5,1]"
+@define U_FLAG  "ccr[4,1]"
+@define N_FLAG  "ccr[3,1]"
+@define Z_FLAG  "ccr[2,1]"
+@define V_FLAG  "ccr[1,1]"
+@define C_FLAG  "ccr[0,1]"
+
+# -------------------------
+# Tokens (unique field names)
+# -------------------------
+# common 1-byte opcode token
+define token tok_1byte(8)
+  op1 = (0,7)
+;
+
+# 2-byte instruction token (high opcode byte + low byte fields)
+define token tok_2byte(16)
+  op2_hi    = (8,15)
+  op2_lo    = (0,7)
+  reg2_field = (5,7)
+  imm8_2    = (0,7)
+;
+
+# 2-byte instruction with 16-bit immediate (imm16 in low word)
+define token tok_imm16(16)
+  op_imm16 = (8,15)
+  imm16    = (0,15)
+;
+
+# 3-byte token for (opcode + 16-bit displacement)
+define token tok_3byte_disp(24)
+  op3      = (16,23)
+  reg3_fld = (13,15)
+  disp16   = (0,15)
+;
+
+# 4-byte instruction containing 24-bit address
+define token tok_4byte_addr(32)
+  op4      = (24,31)
+  addr24   = (0,23)
+;
+
+# Attach small register lists for convenience
+attach variables [ reg2_field reg3_fld ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# -------------------------
+# Helper macros (safe, explicit sized locals)
+# -------------------------
+macro push_val16(val) {
+  sp = sp - 2;
+  local sp_e:3 = zext(sp);        # SP extended to 3 bytes for ram pointer
+  *[ram]:2 sp_e = val;
+}
+
+macro pop_val16(res) {
+  local sp_e:3 = zext(sp);
+  res = *[ram]:2 sp_e;
+  sp = sp + 2;
+}
+
+# Inline-address builder note:
+# Prefer to inline the following pattern where used (to avoid returning varnode from macro):
+# local page_v:1 = ep;
+# local page_e:3 = zext(page_v);
+# local d_v:2 = disp16;
+# local d_e:3 = zext(d_v);
+# local a3:3 = (page_e << 16:3) | d_e;
+#
+# End of core

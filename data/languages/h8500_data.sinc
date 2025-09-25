@@ -1,0 +1,199 @@
+#
+# h8500_data.sinc
+# Data transfer instruction group for H8/539F (fixed sizing + nop op declared)
+# Include after h8500_core.sinc
+#
+
+# -------------------------
+# MOV register-to-register (byte/word/long semantics)
+# NOTE: the concrete opcode masks must be set from the manual for full accuracy.
+# For now we keep the token-field patterns but ensure locals are sized.
+# -------------------------
+
+# MOV.B Rm -> Rn   (byte move / sign-extend to destination)
+:mov_b_reg_reg is op2_hi=0x60 & reg2_field & op2_lo
+{
+  # reg2_field is the chosen register var (sized 2), op2_lo is immediate. Use sized locals.
+  local tmp_src:1 = reg2_field:1;
+  # For example purposes write into r0 (replace with actual dest mapping when opcode fully encoded)
+  r0 = sext(tmp_src);
+  Z = (r0 == 0);
+}
+
+# MOV.W Rm -> Rn (word)
+:mov_w_reg_reg is op2_hi=0x61 & reg2_field & op2_lo
+{
+  local tmp_src:2 = reg2_field:2;
+  r0 = tmp_src;
+  Z = (r0 == 0);
+}
+
+# MOV.L Rm -> Rn (32-bit move via ER regs)
+:mov_l_reg_reg is op2_hi=0x62 & reg2_field & op2_lo
+{
+  # Use explicit sized temp; actual ER mapping needs full encoding fill-in
+  local tmp32:4 = er0;
+  er0 = tmp32; # placeholder write to suppress warnings; replace when encoding known
+}
+
+# -------------------------
+# Immediate moves
+# MOV.B #imm8 -> Rn
+:mov_b_imm_reg is op2_hi=0x6E & imm8_2
+{
+  local imm8_s:1 = imm8_2;
+  local imm16_e:2 = zext(imm8_s);
+  r0 = imm16_e;  # placeholder dst; update to dest reg when opcode bitfields assigned
+  Z = (r0 == 0);
+}
+
+# MOV.W #imm16 -> Rn
+:mov_w_imm_reg is op_imm16=0x7A & imm16
+{
+  local imm16_l:2 = imm16;
+  r0 = imm16_l;  # placeholder dst
+  Z = (r0 == 0);
+}
+
+# -------------------------
+# Load/Store using page register (EP) + 16-bit displacement -> 3-byte effective address
+# Ensure we declare all locals with explicit sizes
+# -------------------------
+
+# Load byte into r0 from EP:disp16
+:ld_b_ep_disp_to_r0 is op3=0xA0 & disp16
+{
+  local page_v:1 = ep;
+  local page_e:3 = zext(page_v);
+  local d_v:2 = disp16;
+  local d_e:3 = zext(d_v);
+  local a3:3 = (page_e << 16:3) | d_e;
+
+  local memval:1 = *[ram]:1 a3;
+  r0 = sext(memval);
+  Z = (r0 == 0);
+  N = (r0 s< 0);
+}
+
+# Load word into r0 from EP:disp16
+:ld_w_ep_disp_to_r0 is op3=0xA1 & disp16
+{
+  local page_v:1 = ep;
+  local page_e:3 = zext(page_v);
+  local d_v:2 = disp16;
+  local d_e:3 = zext(d_v);
+  local a3:3 = (page_e << 16:3) | d_e;
+
+  local memval:2 = *[ram]:2 a3;
+  r0 = memval;
+  Z = (r0 == 0);
+  N = (r0 s< 0);
+}
+
+# Store byte r0 -> [EP:disp16]
+:st_b_r0_to_ep_disp is op3=0xB0 & disp16
+{
+  local page_v:1 = ep;
+  local page_e:3 = zext(page_v);
+  local d_v:2 = disp16;
+  local d_e:3 = zext(d_v);
+  local a3:3 = (page_e << 16:3) | d_e;
+
+  *[ram]:1 a3 = r0:1;
+}
+
+# Store word r0 -> [EP:disp16]
+:st_w_r0_to_ep_disp is op3=0xB1 & disp16
+{
+  local page_v:1 = ep;
+  local page_e:3 = zext(page_v);
+  local d_v:2 = disp16;
+  local d_e:3 = zext(d_v);
+  local a3:3 = (page_e << 16:3) | d_e;
+
+  *[ram]:2 a3 = r0:2;
+}
+
+# -------------------------
+# Generic load/store using register indirect and displacement forms
+# -------------------------
+:mov_b_indisp_to_r0 is op2_hi=0x84 & reg2_field & op2_lo
+{
+  # explicit sizes: reg2_field is a 2-byte var; op2_lo is 1 byte field
+  local base16:2 = reg2_field:2;
+  local offs8:1 = op2_lo;
+  local base3:3 = zext(base16);
+  local offs3:3 = zext(offs8);
+  local a3:3 = base3 + offs3;
+  local memb:1 = *[ram]:1 a3;
+  r0 = sext(memb);
+}
+
+:mov_w_indisp_to_r0 is op2_hi=0x85 & reg2_field & op2_lo
+{
+  local base16:2 = reg2_field:2;
+  local offs8:1 = op2_lo;
+  local base3:3 = zext(base16);
+  local offs3:3 = zext(offs8);
+  local a3:3 = base3 + (offs3 << 1:3);   # assume word offset multiply by 2
+  local memw:2 = *[ram]:2 a3;
+  r0 = memw;
+}
+
+:mov_l_indisp_to_rn is op2_hi=0x51 & reg2_field & op2_lo
+{
+  local base16:2 = reg2_field:2;
+  local offs8:1 = op2_lo;
+  local base3:3 = zext(base16);
+  local offs3:3 = zext(offs8);
+  local a3:3 = base3 + (offs3 << 2:3);   # long = 4
+  local meml:4 = *[ram]:4 a3;
+  er0 = meml;  # placeholder dest
+}
+
+# -------------------------
+# Push / Pop (stack operations)
+# -------------------------
+:push_rn is op2_hi=0x17 & reg2_field
+{
+  # push low 16 bits of encoded register onto stack
+  local val16:2 = reg2_field:2;
+  push_val16(val16);
+}
+
+:pop_rn is op2_hi=0x18 & reg2_field
+{
+  local tmp16:2;
+  pop_val16(tmp16);
+  # assign to r0 (example) - adjust when opcode mapping to destination reg is added
+  r0 = tmp16;
+}
+
+# -------------------------
+# Move to/from SFR (example forms). Addresses are device-specific; prefer pspec default_symbols
+# -------------------------
+:mov_b_sfr_to_r0 is op2_hi=0xC4 & imm8_2
+{
+  local sfr_off:1 = imm8_2;
+  # build 3-byte SFR address from 0x00FE00 base and offset (SFR base occupies low 0x200 bytes)
+  local sfr_base:3 = zext(0x00FE:1) << 16;   # note: this is patterny — actual mapping may be simpler via default_symbols in pspec
+  local sfr_addr:3 = sfr_base | zext(sfr_off);
+  local v:1 = *[ram]:1 sfr_addr;
+  r0 = sext(v);
+}
+
+:mov_b_r0_to_sfr is op2_hi=0xC0 & imm8_2
+{
+  local sfr_off:1 = imm8_2;
+  local sfr_base:3 = zext(0x00FE:1) << 16;
+  local sfr_addr:3 = sfr_base | zext(sfr_off);
+  *[ram]:1 sfr_addr = r0:1;
+}
+
+# -------------------------
+# Fallback unknown opcodes to avoid hard failure: make these no-ops
+# -------------------------
+:unknown_byte is op1=0xFF
+{
+  nop();
+}
