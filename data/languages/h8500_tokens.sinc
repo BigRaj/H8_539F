@@ -1,0 +1,158 @@
+#
+# h8500_tokens.sinc
+# Core tokens / registers / spaces for H8/539F (Ghidra 11.x compatible)
+#
+
+# basic properties
+define endian = big;
+define alignment = 2;
+
+# pcode ops commonly used
+define pcodeop nop;
+define pcodeop Sleep_Standby;
+
+# ---- Memory spaces ----
+# Effective addresses are 3-byte addresses on H8/53x (page <<16 + 16-bit offset).
+# 'ram' is the default data space (3 bytes addressing).
+define space ram type=ram_space size=3 default;
+# registers as a separate space (register varnodes remain 2 or 4 bytes as defined below)
+define space register type=register_space size=2;
+
+# ---- Registers ----
+# 16-bit general registers r0..r7
+define register offset=0x00 size=2 [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# 32-bit extended registers er0..er7 (for 32-bit operations; names align with manual)
+define register offset=0x20 size=4 [ er0 er1 er2 er3 er4 er5 er6 er7 ];
+
+# stack pointer and frame pointer (16-bit)
+define register offset=0x40 size=2 [ sp fp ];
+
+# program counter (32-bit internal representation)
+define register offset=0x48 size=4 [ pc ];
+
+# condition code register (CCR / ccr) 1 byte
+define register offset=0x60 size=1 [ ccr ];
+
+# page / pointer registers (dp/ep/tp/br) 1 byte each
+define register offset=0x70 size=1 [ dp ep tp br ];
+
+# ---- Flag aliases (bit-slices into ccr) ----
+# bit positions per manual (bit 7..0)
+@define I_FLAG  "ccr[7,1]"
+@define UI_FLAG "ccr[6,1]"
+@define H_FLAG  "ccr[5,1]"
+@define U_FLAG  "ccr[4,1]"
+@define N_FLAG  "ccr[3,1]"
+@define Z_FLAG  "ccr[2,1]"
+@define V_FLAG  "ccr[1,1]"
+@define C_FLAG  "ccr[0,1]"
+
+# ---- Common tokens for instruction formats ----
+# simple 8-bit op token
+define token instr8(8)
+  op8 = (0,7)
+;
+
+# 16-bit token: high opcode byte + low operand byte (fields named to match Appendix A)
+define token instr16(16)
+  op_hi = (12,15)
+  op_mid = (8,11)
+  op_lo = (0,7)
+  Sz = (7,7)
+  r_dst = (0,2)
+  r_src = (3,5)
+  r_rrr = (0,2)
+  instr17_imm8 = (0,7)
+  instr16_disp8 = (0,7)
+  instr16_imm16 = (0,15)
+;
+
+#define token instr16(16)
+#  op_hi    = (8,15)
+#  op_lo    = (0,7)
+#  Sz_field = (7,7)   # Sz often distinguishes byte/word/long in H8
+#  r_rrr    = (0,2)   # generic 3-bit register field
+#  r_dst    = (0,2)
+#  r_src    = (3,5)
+#  imm8_16  = (0,7)
+#  disp8    = (0,7)
+#;
+
+# 24-bit token: opcode byte + 16-bit immediate/displacement
+define token instr24(24)
+  op8_24 = (16,23)
+  rfield = (13,15)
+  imm16  = (0,15)
+;
+
+# 32-bit token: 8-bit opcode + 24-bit address (used for absolute forms like JSR/pjsr)
+define token instr32(32)
+  op8_32  = (24,31)
+  addr24  = (0,23)
+;
+
+# variants for twin-word / short-format encoding if needed
+define token instr16_2(16)
+  opcode_full = (0,15)
+  rd_field     = (8,10)
+  rs_field     = (11,13)
+  disp_lo      = (0,7)
+;
+
+# ---- Convenience attaches ----
+# Attach 3-bit register fields to r0..r7 for easy use in constructors
+attach variables [ r_rrr r_dst r_src rfield rd_field rs_field ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# ---- Helper macros: safe, explicitly sized locals ----
+# push 16-bit value onto stack (SP decremented)
+macro push_val16(val) {
+  sp = sp - 2;
+  local sp_e:3 = zext(sp);     # extend SP to 3 bytes for ram pointer
+  *[ram]:2 sp_e = val;         # store 2 bytes at 3-byte pointer
+}
+
+# pop 16-bit value from stack (SP incremented)
+macro pop_val16(result) {
+  local sp_e:3 = zext(sp);
+  result = *[ram]:2 sp_e;
+  sp = sp + 2;
+}
+
+# inline address builder note:
+# prefer to inline this pattern where needed rather than a returning macro:
+# local p_v:1 = ep;
+# local p_e:3 = zext(p_v);
+# local d_v:2 = disp16;
+# local d_e:3 = zext(d_v);
+# local ea3:3 = (p_e << 16:3) | d_e;
+# then use '*[ram]:N ea3' or export ea3 as needed.
+
+# small sign/zero extension helpers (use explicit sizes in constructors)
+macro zext8to16(x) {
+  local t:2 = zext(x);
+  t = zext(x);
+}
+macro sext8to16(x) { 
+  local t:2 = sext(x); 
+  t = sext(x);
+}
+
+# ---- Small branch/displacement helpers (export targets) ----
+# target8: signed 8-bit displacement, word-aligned (if H8 uses word or byte alignment adjust)
+target8: tmp is instr16_disp8 {
+  target:4 = sext(tmp);
+  export target;
+}
+
+# target16: signed 16-bit displacement (used for longer branches)
+target16: tmp is imm16 {
+	target:4 = sext(tmp);
+	export target;
+}
+
+# ---- Safety: fallback unknown opcode pcode (no-op) ----
+# Use a constructor for unknown single byte opcodes if needed in later files:
+:unknown_8 is op8=0xFF { nop(); }
+
+# End of h8500_tokens.sinc

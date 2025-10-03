@@ -1,0 +1,40 @@
+#
+# h8500_mov.sinc
+# Data-transfer group for H8/539F (MOV family)
+# Depends on h8500_tokens.sinc
+#
+
+# We assume h8500_tokens.sinc is already @included and defines:
+# - spaces: ram, register
+# - registers: r0..r7, er0..er7, sp, fp, pc, ccr, dp/ep/tp/br
+# - tokens: instr16, instr24, instr32
+# - helper macros: push_val16/pop_val16
+# - flag aliases: Z_FLAG, N_FLAG, etc.
+# - attach mapping for 3-bit register fields -> r0..r7
+
+# -------------
+# Effective Address constructors
+# -------------
+# Each EA constructor must export an appropriate sized varnode or address
+# For load forms we export a value (sized); for store forms we export an address varnode.
+# We'll implement canonical forms used by MOV family in Appendix A.
+
+
+#MOV:G.B Rn -> Rd
+:mov_g_b_Rn_to_Rd is op_hi=0b1000 & op_mid=0b000 & Sz=0 & r_src & r_dst
+{
+	local val:1 = r_src:1;
+	r_dst = (r_dst & 0xFF00) | zext(val);
+}
+
+:mov_g_w_Rn_to_Rd is op_hi=0b1000 & op_mid=0b0000 & Sz=1 & r_dst & r_src
+{
+	r_dst = r_src;
+}
+
+:xch_w_Rs_to_Rd is op_hi=0b1001 & r_dst & r_src
+{
+	local tmp:2 = r_dst;
+	r_dst = r_src;
+	r_src = tmp;
+}

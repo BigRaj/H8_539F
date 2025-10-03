@@ -1,199 +1,220 @@
 #
 # h8500_data.sinc
-# Data transfer instruction group for H8/539F (fixed sizing + nop op declared)
-# Include after h8500_core.sinc
+# Data-transfer group for H8/539F (MOV family, LDM/STM, XCH, SWAP)
+# Depends on h8500_tokens.sinc
 #
 
-# -------------------------
-# MOV register-to-register (byte/word/long semantics)
-# NOTE: the concrete opcode masks must be set from the manual for full accuracy.
-# For now we keep the token-field patterns but ensure locals are sized.
-# -------------------------
+# We assume h8500_tokens.sinc is already @included and defines:
+# - spaces: ram, register
+# - registers: r0..r7, er0..er7, sp, fp, pc, ccr, dp/ep/tp/br
+# - tokens: instr16, instr24, instr32
+# - helper macros: push_val16/pop_val16
+# - flag aliases: Z_FLAG, N_FLAG, etc.
+# - attach mapping for 3-bit register fields -> r0..r7
 
-# MOV.B Rm -> Rn   (byte move / sign-extend to destination)
-:mov_b_reg_reg is op2_hi=0x60 & reg2_field & op2_lo
-{
-  # reg2_field is the chosen register var (sized 2), op2_lo is immediate. Use sized locals.
-  local tmp_src:1 = reg2_field:1;
-  # For example purposes write into r0 (replace with actual dest mapping when opcode fully encoded)
-  r0 = sext(tmp_src);
-  Z = (r0 == 0);
+# -------------
+# Effective Address constructors
+# -------------
+# Each EA constructor must export an appropriate sized varnode or address
+# For load forms we export a value (sized); for store forms we export an address varnode.
+# We'll implement canonical forms used by MOV family in Appendix A.
+
+# EA: Rn  (direct register) - exports register content (size depends on Sz)
+EA_Rn: r_rrr is r_rrr {
+  # r_rrr is 2-byte register varnode by tokens; export as sized depending on Sz in caller
+  export r_rrr;
 }
 
-# MOV.W Rm -> Rn (word)
-:mov_w_reg_reg is op2_hi=0x61 & reg2_field & op2_lo
-{
-  local tmp_src:2 = reg2_field:2;
-  r0 = tmp_src;
-  Z = (r0 == 0);
-}
-
-# MOV.L Rm -> Rn (32-bit move via ER regs)
-:mov_l_reg_reg is op2_hi=0x62 & reg2_field & op2_lo
-{
-  # Use explicit sized temp; actual ER mapping needs full encoding fill-in
-  local tmp32:4 = er0;
-  er0 = tmp32; # placeholder write to suppress warnings; replace when encoding known
-}
-
-# -------------------------
-# Immediate moves
-# MOV.B #imm8 -> Rn
-:mov_b_imm_reg is op2_hi=0x6E & imm8_2
-{
-  local imm8_s:1 = imm8_2;
-  local imm16_e:2 = zext(imm8_s);
-  r0 = imm16_e;  # placeholder dst; update to dest reg when opcode bitfields assigned
-  Z = (r0 == 0);
-}
-
-# MOV.W #imm16 -> Rn
-:mov_w_imm_reg is op_imm16=0x7A & imm16
-{
-  local imm16_l:2 = imm16;
-  r0 = imm16_l;  # placeholder dst
-  Z = (r0 == 0);
-}
-
-# -------------------------
-# Load/Store using page register (EP) + 16-bit displacement -> 3-byte effective address
-# Ensure we declare all locals with explicit sizes
-# -------------------------
-
-# Load byte into r0 from EP:disp16
-:ld_b_ep_disp_to_r0 is op3=0xA0 & disp16
-{
-  local page_v:1 = ep;
-  local page_e:3 = zext(page_v);
-  local d_v:2 = disp16;
-  local d_e:3 = zext(d_v);
-  local a3:3 = (page_e << 16:3) | d_e;
-
-  local memval:1 = *[ram]:1 a3;
-  r0 = sext(memval);
-  Z = (r0 == 0);
-  N = (r0 s< 0);
-}
-
-# Load word into r0 from EP:disp16
-:ld_w_ep_disp_to_r0 is op3=0xA1 & disp16
-{
-  local page_v:1 = ep;
-  local page_e:3 = zext(page_v);
-  local d_v:2 = disp16;
-  local d_e:3 = zext(d_v);
-  local a3:3 = (page_e << 16:3) | d_e;
-
-  local memval:2 = *[ram]:2 a3;
-  r0 = memval;
-  Z = (r0 == 0);
-  N = (r0 s< 0);
-}
-
-# Store byte r0 -> [EP:disp16]
-:st_b_r0_to_ep_disp is op3=0xB0 & disp16
-{
-  local page_v:1 = ep;
-  local page_e:3 = zext(page_v);
-  local d_v:2 = disp16;
-  local d_e:3 = zext(d_v);
-  local a3:3 = (page_e << 16:3) | d_e;
-
-  *[ram]:1 a3 = r0:1;
-}
-
-# Store word r0 -> [EP:disp16]
-:st_w_r0_to_ep_disp is op3=0xB1 & disp16
-{
-  local page_v:1 = ep;
-  local page_e:3 = zext(page_v);
-  local d_v:2 = disp16;
-  local d_e:3 = zext(d_v);
-  local a3:3 = (page_e << 16:3) | d_e;
-
-  *[ram]:2 a3 = r0:2;
-}
-
-# -------------------------
-# Generic load/store using register indirect and displacement forms
-# -------------------------
-:mov_b_indisp_to_r0 is op2_hi=0x84 & reg2_field & op2_lo
-{
-  # explicit sizes: reg2_field is a 2-byte var; op2_lo is 1 byte field
-  local base16:2 = reg2_field:2;
-  local offs8:1 = op2_lo;
+# EA: @Rn  (register indirect) - address is r_rrr (16-bit) but we need 3-byte pointer
+# Export as pointer varnode (3 bytes) for memory operations
+EA_addr_Rn: r_rrr is r_rrr {
+  local base16:2 = r_rrr:2;
   local base3:3 = zext(base16);
-  local offs3:3 = zext(offs8);
-  local a3:3 = base3 + offs3;
-  local memb:1 = *[ram]:1 a3;
-  r0 = sext(memb);
+  #export *:3 base3;
+  export *:1 r_rrr;
 }
 
-:mov_w_indisp_to_r0 is op2_hi=0x85 & reg2_field & op2_lo
-{
-  local base16:2 = reg2_field:2;
-  local offs8:1 = op2_lo;
+# EA: @(d:8,Rn) - 8-bit disp + base
+EA_addr_d8Rn: r_rrr & disp8 is r_rrr & disp8 {
+  local base16:2 = r_rrr;
+  local d8:1     = disp8;
+  local base3:3  = zext(base16);
+  local d3:3     = zext(d8);
+  local ea3:3    = base3 + d3;
+  export ea3;
+}
+
+# EA: @(d:16,Rn) - 16-bit disp (two bytes following) -> 3-byte EA
+EA_addr_d16Rn: rfield & imm16 is rfield & imm16 {
+  local base16:2 = rfield:2;
+  local d16:2 = imm16:2;
   local base3:3 = zext(base16);
-  local offs3:3 = zext(offs8);
-  local a3:3 = base3 + (offs3 << 1:3);   # assume word offset multiply by 2
-  local memw:2 = *[ram]:2 a3;
-  r0 = memw;
+  local d3:3 = zext(d16);
+  local ea3:3 = base3 + d3;
+  export *:3 ea3;
 }
 
-:mov_l_indisp_to_rn is op2_hi=0x51 & reg2_field & op2_lo
-{
-  local base16:2 = reg2_field:2;
-  local offs8:1 = op2_lo;
-  local base3:3 = zext(base16);
-  local offs3:3 = zext(offs8);
-  local a3:3 = base3 + (offs3 << 2:3);   # long = 4
-  local meml:4 = *[ram]:4 a3;
-  er0 = meml;  # placeholder dest
+# EA: @-Rn (pre-decrement) -> address after decrement for push/store
+EA_addr_preDecRn: r_rrr is r_rrr {
+  # we will compute and export pointer
+  local base16:2 = r_rrr:2;
+  local new_sp16:2 = base16 - 2;   # using 2 as example decrement for word-sized; call-site must ensure correct size
+  local ea3:3 = zext(new_sp16);
+  # update register
+  r_rrr = new_sp16;
+  export *:3 ea3;
 }
 
-# -------------------------
-# Push / Pop (stack operations)
-# -------------------------
-:push_rn is op2_hi=0x17 & reg2_field
-{
-  # push low 16 bits of encoded register onto stack
-  local val16:2 = reg2_field:2;
-  push_val16(val16);
+# EA: @Rn+ (post-increment) - similar pattern
+EA_addr_postIncRn: r_rrr is r_rrr {
+  local base16:2 = r_rrr:2;
+  local ea3:3 = zext(base16);
+  # increment by 2 for word-endpoint; adjust at call-time if different
+  r_rrr = base16 + 2;
+  export *:3 ea3;
 }
 
-:pop_rn is op2_hi=0x18 & reg2_field
-{
-  local tmp16:2;
-  pop_val16(tmp16);
-  # assign to r0 (example) - adjust when opcode mapping to destination reg is added
-  r0 = tmp16;
+# EA: @aa:8 (direct 8-bit absolute) -> address space direct (page+offset)
+EA_addr_aa8: imm8_16 is imm8_16 {
+  local aa8:1 = imm8_16;
+  # Build a 3-byte EA using high byte 0x00FE or page if manual indicates otherwise.
+  # Prefer to reference default_symbols in .pspec for named SFRs/ROM addresses rather than hardcoding page.
+  local page_v:1 = 0x00;           # placeholder page; real values come from pspec default_symbols mapping
+  local page3:3 = zext(page_v);
+  local off3:3 = zext(aa8);
+  local ea3:3 = (page3 << 16:3) | off3;
+  export *:3 ea3;
 }
 
-# -------------------------
-# Move to/from SFR (example forms). Addresses are device-specific; prefer pspec default_symbols
-# -------------------------
-:mov_b_sfr_to_r0 is op2_hi=0xC4 & imm8_2
-{
-  local sfr_off:1 = imm8_2;
-  # build 3-byte SFR address from 0x00FE00 base and offset (SFR base occupies low 0x200 bytes)
-  local sfr_base:3 = zext(0x00FE:1) << 16;   # note: this is patterny — actual mapping may be simpler via default_symbols in pspec
-  local sfr_addr:3 = sfr_base | zext(sfr_off);
-  local v:1 = *[ram]:1 sfr_addr;
-  r0 = sext(v);
+# EA: @aa:16 (direct 16-bit absolute)
+EA_addr_aa16: imm16 is imm16 {
+  local aa16:2 = imm16;
+  local page_v:1 = 0x00;
+  local page3:3 = zext(page_v);
+  local off3:3 = zext(aa16);
+  local ea3:3 = (page3 << 16:3) | off3;
+  export *:3 ea3;
 }
 
-:mov_b_r0_to_sfr is op2_hi=0xC0 & imm8_2
-{
-  local sfr_off:1 = imm8_2;
-  local sfr_base:3 = zext(0x00FE:1) << 16;
-  local sfr_addr:3 = sfr_base | zext(sfr_off);
-  *[ram]:1 sfr_addr = r0:1;
+# EA: #xx:8 immediate data (export immediate sized value)
+EA_imm8: imm8_16 is imm8_16 {
+  local i8:1 = imm8_16;
+  export *:1 i8;
 }
 
-# -------------------------
-# Fallback unknown opcodes to avoid hard failure: make these no-ops
-# -------------------------
-:unknown_byte is op1=0xFF
-{
-  nop();
+# EA: #xx:16 immediate data (export immediate sized value)
+EA_imm16: imm16 is imm16 {
+  local i16:2 = imm16;
+  export *:2 i16;
 }
+
+# -------------
+# MOV instruction family
+# -------------
+# For clarity we break out by direction and size. We use 'Sz' to indicate size (0=byte,1=word)
+# Caller must ensure EA constructors export appropriate sized varnodes or addresses.
+
+:mov_g_b_addrRn_to_Rd is op_hi=0b1101 & Sz_field=0 & r_dst & EA_addr_Rn{
+	r_dst = sext(*:1 EA_addr_Rn);
+}
+
+:mov_g_w_addrRn_to_Rd is op_hi=0b1101 & Sz_field=1 & r_dst & EA_addr_Rn{
+	r_dst = *:2 EA_addr_Rn;
+}
+
+# MOV.G.W <EA>, Rd
+:mov_g_w_EA_to_Rd EA, r_dst is opcode=0b10001 & EA & r_dst {
+    r_dst = sext(*:2 EA);
+}
+
+# MOV.G.W <EA>, Rd  (load word from EA into Rd)
+:mov_g_w_EA_to_Rd is instr16
+  {
+    # similar to byte version but 2-byte reads
+    local val16:2;
+    r_dst = val16;
+  }
+
+# MOV.G.B Rs, <EAd> (store byte from source register Rs into EA destination)
+:mov_g_b_Rs_to_EA is instr16
+  {
+    # store 1 byte: *[ram]:1 <EA_addr> = regs:1
+    # Placeholder example — actual matching constructor will use EA_addr_* production and then:
+    # *[ram]:1 exported_ea3 = regs:1;
+    nop();
+  }
+
+# MOV.G.W Rs, <EAd> (store word)
+:mov_g_w_Rs_to_EA is instr16
+  {
+    nop();
+  }
+
+# MOV.G.B #imm8, <EAd>
+:mov_g_b_imm8_to_EA is instr16
+  {
+    nop();
+  }
+
+# MOV.G.W #imm8, <EAd> (imm8 zero-extended to word)
+:mov_g_w_imm8_to_EA is instr16
+  {
+    nop();
+  }
+
+# MOV.G.W #imm16, <EAd>
+:mov_g_w_imm16_to_EA is instr24
+  {
+    nop();
+  }
+
+# -------------
+# LDM / STM / PUSH / POP helpers
+# -------------
+# LDM.W @SP+, <register list>
+# Exact encoding requires register-list operand parsing; implement a sample that handles register-list bitmask.
+:ldm_w_sp_postinc is instr16
+  {
+    # Typically the low 8 bits of the following word encode register list. We'll simulate:
+    local regmask:2 = imm16;    # placeholder
+    local addr3:3 = zext(sp);
+    # for each bit set, pop word into the corresponding register (order per manual)
+    # We'll do a simple loop-like sequence via conditional assigns (manual will need more precise decoding)
+    # Example for bit0->r0:
+    if ((regmask & 0x0001) != 0) goto load_r0;
+    # Update SP
+    sp = sp + 2 * zext(((regmask) & 0x00FF)); # approximate
+  }
+:load_r0 {
+	r0 = *[ram]:2 sp;
+	sp = sp + 2;
+}
+# STM.W <register list>, @-SP  (store multiple registers to stack pre-decrement)
+:stm_w_predec_sp is instr16
+  {
+    nop();
+  }
+
+# XCH.W Rs,Rd  (exchange word)
+:xch_w_rs_rd is instr16
+  {
+    local tmp:2 = r_dst;
+    r_dst = r_src;
+    r_src = tmp;
+  }
+
+# SWAP.B Rd (swap byte order inside word)
+:swap_b_rd is instr16
+  {
+    local tmp0:2 = r_dst;
+    local low:1 = tmp0:1;
+    local mid:1 = (tmp0 >> 8) & 0xFF;
+    local high:1 = (tmp0 >> 16) & 0xFF;
+    # simple byte-swap for 16-bit: rotate bytes
+    r_dst = ((tmp0 & 0x00FF) << 8) | ((tmp0 & 0xFF00) >> 8);
+  }
+
+# Fallback unknown data opcodes -> no-op (prevents failing on unimplemented encodings)
+:unknown_data is instr8 { nop(); }
+
+# End of h8500_data.sinc

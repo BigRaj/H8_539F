@@ -2,16 +2,31 @@
 
 <processor_spec>
   <default_memory_blocks>
-    <memory_block name="ONCHIP_ROM" start_address="ram:000000" length="0x20000" mode="r" initialized="true"/>
-    <memory_block name="ONCHIP_RAM" start_address="ram:00EE80" length="0x1000" mode="rw" initialized="false"/>
-    <memory_block name="SFR" start_address="ram:00FE00" length="0x200" mode="rw" initialized="false"/>
+    <!-- Existing overlays -->
+    <memory_block name="ONCHIP_RAM" start_address="ram:00EE80" length="0x1000" mode="rw" initialized="false" overlay="true"/>
+    <memory_block name="SFR" start_address="ram:00FE00" length="0x200" mode="rw" initialized="false" overlay="true"/>
+
+    <!-- Suggested overlays from H8/539F manual -->
+    <memory_block name="INTERRUPT_VECTORS" start_address="ram:000000" length="0x0100" mode="r" initialized="true" overlay="true"/>
+    <memory_block name="PORTS" start_address="ram:00FE10" length="0x10" mode="rw" initialized="false" overlay="true"/>
+    <memory_block name="TIMERS" start_address="ram:00FE40" length="0x20" mode="rw" initialized="false" overlay="true"/>
+    <memory_block name="SERIAL" start_address="ram:00FE80" length="0x20" mode="rw" initialized="false" overlay="true"/>
+    <memory_block name="ADC" start_address="ram:00FEC0" length="0x10" mode="rw" initialized="false" overlay="true"/>
+    <memory_block name="SYSCTRL" start_address="ram:00FFF0" length="0x10" mode="rw" initialized="false" overlay="true"/>
   </default_memory_blocks>
   <programcounter register="pc"/>
   <default_symbols>
+    <!-- I/O Ports -->
     <symbol name="P1DDR" address="ram:00FE10"/>
     <symbol name="P1DR"  address="ram:00FE11"/>
     <symbol name="P2DDR" address="ram:00FE12"/>
     <symbol name="P2DR"  address="ram:00FE13"/>
+    <symbol name="P3DDR" address="ram:00FE14"/>
+    <symbol name="P3DR"  address="ram:00FE15"/>
+    <symbol name="P4DDR" address="ram:00FE16"/>
+    <symbol name="P4DR"  address="ram:00FE17"/>
+
+    <!-- Timers -->
     <symbol name="TCR0"  address="ram:00FE40"/>
     <symbol name="TCR1"  address="ram:00FE41"/>
     <symbol name="TCR2"  address="ram:00FE42"/>
@@ -25,7 +40,28 @@
     <symbol name="TMDR"  address="ram:00FE52"/>
     <symbol name="TOLR"  address="ram:00FE53"/>
     <symbol name="TOER"  address="ram:00FE54"/>
+
+    <!-- Serial Communication Interface (SCI) -->
+    <symbol name="SCR"   address="ram:00FE80"/>
+    <symbol name="SMR"   address="ram:00FE81"/>
+    <symbol name="SSR"   address="ram:00FE82"/>
+    <symbol name="TDR"   address="ram:00FE83"/>
+    <symbol name="RDR"   address="ram:00FE84"/>
+    <symbol name="SCMR"  address="ram:00FE85"/>
+
+    <!-- A/D Converter -->
+    <symbol name="ADCSR" address="ram:00FEC0"/>
+    <symbol name="ADCR"  address="ram:00FEC1"/>
+    <symbol name="ADDRA" address="ram:00FEC2"/>
+    <symbol name="ADDRB" address="ram:00FEC3"/>
+  
+    <!-- Interrupt Controller -->
     <symbol name="IER"   address="ram:00FE60"/>
     <symbol name="ISR"   address="ram:00FE61"/>
+  
+    <!-- System Control -->
+    <symbol name="SYSCR" address="ram:00FFF0"/>
+    <symbol name="WDTCSR" address="ram:00FFF1"/>
+    <symbol name="RSTCSR" address="ram:00FFF2"/>
   </default_symbols>
 </processor_spec>
