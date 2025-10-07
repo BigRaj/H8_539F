@@ -33,7 +33,7 @@
     <range space="ram"/>
   </global>
 
-  <stackpointer register="r7" space="ram"/>
+  <stackpointer register="r7" space="ram" growth="negative" />
 
   <default_proto>
     <prototype name="__stdcall" extrapop="0" stackshift="0" strategy="standard">
@@ -62,17 +62,11 @@
         <pentry minsize="2" maxsize="2" extension="inttype">
           <register name="r0"/>
         </pentry>
-        <!-- 32-bit return -->
-        <pentry minsize="4" maxsize="4">
-          <register name="er0"/>
-        </pentry>
       </output>
 
       <unaffected>
         <register name="r6"/>
         <register name="r7"/>
-        <register name="er6"/>
-        <register name="er7"/>
       </unaffected>
 
       <killedbycall>
@@ -82,12 +76,6 @@
         <register name="r3"/>
         <register name="r4"/>
         <register name="r5"/>
-        <register name="er0"/>
-        <register name="er1"/>
-        <register name="er2"/>
-        <register name="er3"/>
-        <register name="er4"/>
-        <register name="er5"/>
         <register name="ccr"/>
         <register name="dp"/>
         <register name="ep"/>

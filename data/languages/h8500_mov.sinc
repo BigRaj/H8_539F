@@ -19,22 +19,65 @@
 # For load forms we export a value (sized); for store forms we export an address varnode.
 # We'll implement canonical forms used by MOV family in Appendix A.
 
+#	RN COLUMN
 
 #MOV:G.B Rn -> Rd
-:mov_g_b_Rn_to_Rd is op_hi=0b1000 & op_mid=0b000 & Sz=0 & r_src & r_dst
+:MOVG.B ""^rrr^", "^rd^"" is ea=0b1010 & op=0b10000 & Size=0 & rrr & rd 
 {
-	local val:1 = r_src:1;
-	r_dst = (r_dst & 0xFF00) | zext(val);
+  local val:1 = rrr:1;
+  rd = (rd & 0xFF00) | zext(val);
 }
 
-:mov_g_w_Rn_to_Rd is op_hi=0b1000 & op_mid=0b0000 & Sz=1 & r_dst & r_src
+#MOV:G.W RN -> Rd
+:MOVG.W ""^rrr^", "^rd^"" is ea=0b1010 & op=0b10000 & Size=1 & rrr & rd
 {
-	r_dst = r_src;
+	rd = rrr;
 }
 
-:xch_w_Rs_to_Rd is op_hi=0b1001 & r_dst & r_src
+#XCH.W RS -> RD
+:XCH.W ""^rrr^", "^rd^"" is ea=0b1010 & op=0b10010 & Size=1 & rrr & rd
 {
-	local tmp:2 = r_dst;
-	r_dst = r_src;
-	r_src = tmp;
+	local tmp:2 = rd;
+	rd = rrr;
+	rrr = tmp;
 }
+
+#SWAP.B_Rd
+:SWAP.B ""^rd^"" is ea=0b1010 & op=0b00010 & Size=0 & rd 
+{
+  local low:2  = rd & 0x00FF;       # isolates low byte (bits 0-7)
+  local high:2 = (rd >> 8) & 0x00FF; # isolates high byte (bits 8-15)
+  rd = (low << 8) | high; 		  # swaps positions
+}
+
+
+
+# @RN COLUMN
+
+#MOV:G.B @Rn -> Rd
+:MOV.B "@"^rrr^", "^rd^"" is ea=0b1101 & op=0b10000 & Size=0 & rrr & rd
+{
+  #local addr16:2 = zext(rrr);
+  local val:1 = *[ram]:1 rrr;
+  rd = (rd & 0xFF00) | zext(val);
+}
+
+#MOV:G.W @Rn -> Rd
+:MOV.W "@"^rrr^", "^rd^"" is ea=0b1101 & op=0b10000 & Size=1 & rrr & rd
+{
+	rd =*[ram]:2 rrr; 
+}
+
+#MOV:G.B @Rn -> Rd
+#:mov_g_b_addr_Rn_Rd is op_hi=0b1101 & op_lo=0b10000 & Sz=0 & r_src & r_dst
+#{
+#	local addr:3 = zext(r_src);
+#	local val:1 = *[ram]:1 addr;
+#	r_dst = (r_dst & 0xFF00) | zext(val);
+#}
+
+#MOV:G.W @Rn -> Rd
+#:mov_g_w_addr_Rn_Rd is op_hi=0b1101 & Sz=1 & r_dst & r_src
+#{
+#	r_dst = r_src;
+#} 
