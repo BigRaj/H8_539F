@@ -1,0 +1,160 @@
+#
+# h8500_tokens.sinc  -- tokens, register and small macros for H8/539F
+#
+# Minimal, tested baseline for H8/539F (20-bit addressing, 16-bit registers)
+#
+
+define endian = big;
+define alignment = 2;
+
+# pcode ops commonly used
+define pcodeop nop;
+define pcodeop Sleep_Standby;
+
+# ---- Memory spaces ----
+# physical address size uses 3 bytes (allows 20-bit addresses)
+define space ram type=ram_space size=3 default;
+# registers live in register space (2-byte sized varnodes)
+define space register type=register_space size=2;
+
+# ---- Registers ----
+# General-purpose registers R0..R7 (16-bit)
+define register offset=0x00 size=2 [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# note: R7 is used as SP, R6 often used as FP by convention on this family
+# do NOT define separate "sp" / "fp" registers — use r7 and r6 directly.
+
+# Program counter (16-bit); EP (8-bit) provides high page bits for 20-bit EA
+define register offset=0x20 size=2 [ pc ];
+define register offset=0x22 size=1 [ ep ];   # Extended Page (upper bits for addressing)
+
+# Condition Code Register (CCR) is 8-bit
+define register offset=0x24 size=1 [ ccr ];
+
+# Data/Page pointer and other 8-bit system registers
+define register offset=0x25 size=1 [ dp tp br ];
+
+# ---- Flag bit expressions for convenience ----
+# (bit positions per H8/500 family CCR layout -- confirm against manual if needed)
+@define C_FLAG   "ccr[0,1]"
+@define V_FLAG   "ccr[1,1]"
+@define Z_FLAG   "ccr[2,1]"
+@define N_FLAG   "ccr[3,1]"
+@define H_FLAG   "ccr[4,1]"
+@define I0_FLAG  "ccr[5,1]"
+@define I1_FLAG  "ccr[6,1]"
+@define I2_FLAG  "ccr[7,1]"
+
+# ---- Tokens (instruction bit-field helpers) ----
+# A conservative common 16-bit instruction token set:
+# - op_hi covers the high byte (bits 8..15)
+# - op_lo covers the low byte (bits 0..7)
+# - Sz: oft used to select byte/word operations (example)
+# - r_dst / r_src mapped to low-bit fields (3-bit registers)
+define token instr16(16)
+  hi_bit    = (8,15)
+  ea        = (12,15)
+  lo_bit    = (0,7)
+  op_code   = (3,7)
+  Sz        = (11,11)
+  ea_reg    = (8,10) # bits from EA field (rrr)
+  op_reg    = (0,2)  # bits from OP field (rs/rd)
+  imm8      = (0,7)
+  disp8     = (0,7)
+  imm16     = (0,15)
+;
+
+# If you need wider encodings later, add instr24 / instr32 tokens accordingly.
+
+# ---- Attach register mapping (so token fields map to register names) ----
+# 3-bit register field r_rrr/r_dst/r_src maps to r0..r7
+attach variables [ ea_reg op_reg ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+# ---- Small utility macros ----
+# push/pop 16-bit word using R7 as SP (stack grows down)
+macro push_word(val) {
+  r7 = r7 - 2;
+  *[ram]:2 r7 = val;
+}
+
+macro pop_word(out) {
+  out = *[ram]:2 r7;
+  r7 = r7 + 2;
+}
+
+# convenience to push pc (store return address as 16-bit)
+macro push_pc() {
+  r7 = r7 - 2;
+  *[ram]:2 r7 = pc;
+}
+
+# convenience to pop into pc (return)
+macro pop_pc() {
+  pc = *[ram]:2 r7;
+  r7 = r7 + 2;
+}
+
+# zero/sign extend helpers (wrap simple uses)
+macro zext_to_2bytes(x) {
+  local tmp:2 = zext(x);
+  tmp = zext(x);   # ensure assignment to a sized varnode
+}
+
+macro sext_to_4bytes(x) {
+  local tmp:4 = sext(x);
+  tmp = sext(x);
+}
+
+# ---- Address construction helpers ----
+# Combine EP (8-bit page) and a 16-bit offset to form a 3-byte address:
+# Result is a 3-byte address value (we produce it as a local sized var if needed)
+# Usage: local addr3:3 = make_addr_from_ep_offset(offset16);
+macro make_addr_from_ep_offset(offset16) {
+  local offs16:2 = offset16;
+  # produce 3-byte value: (ep << 16) | (offs16 & 0xFFFF)
+  local addr3:3 = ((zext(ep) & 0xFF) << 16) | (zext(offs16) & 0xFFFF);
+  addr3 = ((zext(ep) & 0xFF) << 16) | (zext(offs16) & 0xFFFF);  # ensure assignment form
+}
+
+# Make full 3-byte PC address using EP and PC
+macro make_pc_addr() {
+  local pcfull:3 = ((zext(ep) & 0xFF) << 16) | zext(pc);
+  pcfull = ((zext(ep) & 0xFF) << 16) | zext(pc);
+}
+
+# Branch target helpers: sign extend an 8- or 16-bit displacement and add to inst_start.
+# Many H8 branches are relative; user constructors should use these helpers.
+# target8: signed 8-bit displacement (left shift if instruction width requires)
+# returns 3-byte address
+#macro target_from_disp8(disp8, rule_id, shift) {
+#  local d8:1 = disp8;
+#  local s:4 = sext(d8);         # sign-extend to 4 bytes for arithmetic
+#  if (shift != 0) goto <no_shift>;
+#  local targ32:4 = s + rule_id;
+#  goto <done>;
+#  <no_shift>
+#  targ32:4 = (s << shift) + rule_id;
+#  <done>
+#  # combine targ32 with ep to create 3-byte address
+#  local targ3:3;
+#  targ3 = ((zext(ep) & 0xFF) << 16) | (targ32 & 0xFFFF);
+#}
+
+#macro target_from_disp16(disp16, rule_id, shift) {
+#  local d16:2 = disp16;
+#  local s:4 = sext(d16);
+#  if (shift != 0) goto <no_shift2>;
+#  local targ32:4 = s + inst_next;
+#  goto <done2>;
+#  <no_shift2>
+#  local targ32:4 = (s << shift) + inst_next;
+#  <done2>
+#  local targ3:3;
+#  targ3 = ((zext(ep) & 0xFF) << 16) | (targ32 & 0xFFFF);
+#}
+
+# ---- Export convenience (used by EA constructors) ----
+# Example: EA constructors should export a varnode / address sized properly.
+# Exporting an address: "export *:3 addr3;"  (addr3 must be a 3-byte-sized varnode)
+
+# End of h8500_tokens.sinc
