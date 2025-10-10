@@ -151,3 +151,34 @@
 	val:2 = op_reg:2;
 	*[ram]:2 addr24 = val;
 }
+
+# MOV:G.B #xx:8, @(d:8,Rn)
+:MOVG.B "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000110 & Sz=0 & ea_reg & disp8 & imm8
+{
+	local base24:3 = zext(ea_reg:2);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+	local val:1 = imm8;
+	*[ram]:1 addr24 = val;
+} 
+
+# MOV:G.W #xx:8, @(d:8,Rn)
+:MOVG.W "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000110 & Sz=1 & ea_reg & disp8 & imm8
+{
+	local base24:3 = zext(ea_reg:2);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+	local val:2 = imm8;
+	*[ram]:2 addr24 = val;
+} 
+
+# MOV:G.W #xx:16, @(d:8,Rn)
+:MOVG.W "#"^imm16^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000111 & Sz=1 & ea_reg & disp8 & imm16
+{
+	local base24:3   = zext(ea_reg:2);   # base register Rn (16-bit)
+	local offset24:3 = sext(disp8:1);    # signed 8-bit displacement
+	local addr24:3   = base24 + offset24;
+	local val:2    = imm16;            # 16-bit immediate value
+	*[ram]:2 addr24  = val;            # store to memory
+}
+
