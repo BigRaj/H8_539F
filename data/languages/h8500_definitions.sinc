@@ -64,11 +64,32 @@ define token instr16(16)
   imm16     = (0,15)
 ;
 
+# 32-bit instruction token: bytes 1..4 mapped MSB->LSB
+define token instr32(32)
+  byte1_32    = (24,31)    # first byte (EA/Sz/rrr)
+  byte2_32    = (16,23)    # disp high
+  byte3_32    = (8,15)     # disp low
+  byte4_32    = (0,7)      # opcode / low-order byte
+
+  # fields (shifted from your instr16 layout by +16 bits)
+  ea_32       = (28,31)    # was (12,15) in instr16
+  Sz_32       = (27,27)    # was (11,11)
+  ea_reg_32   = (24,26)    # was (8,10)
+  op_code_32  = (3,7)      # same relative position in byte4
+  op_reg_32   = (0,2)
+  lo_bit_32   = (0,7)      # low byte (same as instr16 lo_bit)
+
+  # combined fields
+  disp16_32   = (8,23)     # bytes2..3 as a 16-bit signed displacement
+  imm8_32     = (0,7)
+  imm16_32    = (0,15)
+;
+
 # If you need wider encodings later, add instr24 / instr32 tokens accordingly.
 
 # ---- Attach register mapping (so token fields map to register names) ----
 # 3-bit register field r_rrr/r_dst/r_src maps to r0..r7
-attach variables [ ea_reg op_reg ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+attach variables [ ea_reg op_reg ea_reg_32 op_reg_32 ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
 
 # ---- Small utility macros ----
 # push/pop 16-bit word using R7 as SP (stack grows down)

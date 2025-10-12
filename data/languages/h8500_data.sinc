@@ -1,6 +1,6 @@
 #
-# h8500_data.sinc
-# Data-transfer group for H8/539F (MOV family, LDM/STM, XCH, SWAP)
+# h8500_mov.sinc
+# Data-transfer group for H8/539F (MOV family)
 # Depends on h8500_tokens.sinc
 #
 
@@ -19,202 +19,523 @@
 # For load forms we export a value (sized); for store forms we export an address varnode.
 # We'll implement canonical forms used by MOV family in Appendix A.
 
-# EA: Rn  (direct register) - exports register content (size depends on Sz)
-EA_Rn: r_rrr is r_rrr {
-  # r_rrr is 2-byte register varnode by tokens; export as sized depending on Sz in caller
-  export r_rrr;
+#	RN COLUMN
+
+#MOV:G.B Rn -> Rd
+:MOVG.B ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10000 & Sz=0 & ea_reg & op_reg 
+{
+  local val:1 = ea_reg:1;
+  op_reg = (op_reg & 0xFF00) | zext(val);
 }
 
-# EA: @Rn  (register indirect) - address is r_rrr (16-bit) but we need 3-byte pointer
-# Export as pointer varnode (3 bytes) for memory operations
-EA_addr_Rn: r_rrr is r_rrr {
-  local base16:2 = r_rrr:2;
-  local base3:3 = zext(base16);
-  #export *:3 base3;
-  export *:1 r_rrr;
+#MOV:G.W RN -> Rd
+:MOVG.W ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
+{
+	op_reg = ea_reg;
 }
 
-# EA: @(d:8,Rn) - 8-bit disp + base
-EA_addr_d8Rn: r_rrr & disp8 is r_rrr & disp8 {
-  local base16:2 = r_rrr;
-  local d8:1     = disp8;
-  local base3:3  = zext(base16);
-  local d3:3     = zext(d8);
-  local ea3:3    = base3 + d3;
-  export ea3;
+#XCH.W RS -> RD
+:XCH.W ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10010 & Sz=1 & ea_reg & op_reg
+{
+	local tmp:2 = op_reg;
+	op_reg = ea_reg;
+	ea_reg = tmp;
 }
 
-# EA: @(d:16,Rn) - 16-bit disp (two bytes following) -> 3-byte EA
-EA_addr_d16Rn: rfield & imm16 is rfield & imm16 {
-  local base16:2 = rfield:2;
-  local d16:2 = imm16:2;
-  local base3:3 = zext(base16);
-  local d3:3 = zext(d16);
-  local ea3:3 = base3 + d3;
-  export *:3 ea3;
+#SWAP.B_Rd
+:SWAP.B ""^op_reg^"" is ea=0b1010 & op_code=0b00010 & Sz=0 & op_reg 
+{
+  local low:2  = op_reg & 0x00FF;       # isolates low byte (bits 0-7)
+  local high:2 = (op_reg >> 8) & 0x00FF; # isolates high byte (bits 8-15)
+  op_reg = (low << 8) | high; 		  # swaps positions
 }
 
-# EA: @-Rn (pre-decrement) -> address after decrement for push/store
-EA_addr_preDecRn: r_rrr is r_rrr {
-  # we will compute and export pointer
-  local base16:2 = r_rrr:2;
-  local new_sp16:2 = base16 - 2;   # using 2 as example decrement for word-sized; call-site must ensure correct size
-  local ea3:3 = zext(new_sp16);
-  # update register
-  r_rrr = new_sp16;
-  export *:3 ea3;
+
+
+# @RN COLUMN
+
+#MOV:G.B @Rn -> Rd
+:MOVG.B "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b10000 & Sz=0 & ea_reg & op_reg
+{
+  local addr24:3 = zext(ea_reg);
+  local val:1 = *[ram]:1 addr24;
+  op_reg = (op_reg & 0xFF00) | zext(val);
 }
 
-# EA: @Rn+ (post-increment) - similar pattern
-EA_addr_postIncRn: r_rrr is r_rrr {
-  local base16:2 = r_rrr:2;
-  local ea3:3 = zext(base16);
-  # increment by 2 for word-endpoint; adjust at call-time if different
-  r_rrr = base16 + 2;
-  export *:3 ea3;
+#MOV:G.W @Rn -> Rd
+:MOVG.W "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
+{
+	local addr24:3 = zext(ea_reg);
+	op_reg =*[ram]:2 addr24; 
 }
 
-# EA: @aa:8 (direct 8-bit absolute) -> address space direct (page+offset)
-EA_addr_aa8: imm8_16 is imm8_16 {
-  local aa8:1 = imm8_16;
-  # Build a 3-byte EA using high byte 0x00FE or page if manual indicates otherwise.
-  # Prefer to reference default_symbols in .pspec for named SFRs/ROM addresses rather than hardcoding page.
-  local page_v:1 = 0x00;           # placeholder page; real values come from pspec default_symbols mapping
-  local page3:3 = zext(page_v);
-  local off3:3 = zext(aa8);
-  local ea3:3 = (page3 << 16:3) | off3;
-  export *:3 ea3;
+#MOV:G.B Rs -> @Rn
+:MOVG.B ""^op_reg^", @"^ea_reg^"" is ea=0b1101 & op_code=0b10010 & Sz=0 & op_reg & ea_reg
+{
+	local addr24:3 = zext(ea_reg);
+	local val:1 = op_reg:1;
+	*[ram]:1 addr24 = val;
 }
 
-# EA: @aa:16 (direct 16-bit absolute)
-EA_addr_aa16: imm16 is imm16 {
-  local aa16:2 = imm16;
-  local page_v:1 = 0x00;
-  local page3:3 = zext(page_v);
-  local off3:3 = zext(aa16);
-  local ea3:3 = (page3 << 16:3) | off3;
-  export *:3 ea3;
+#MOV:G.W Rs-> @Rn
+:MOVG.W ""^op_reg^", @"^ea_reg^"" is ea=0b1101 & op_code=0b10010 & Sz=1 & op_reg & ea_reg
+{
+	local addr24:3 = zext(ea_reg);
+	local val:2 = op_reg;
+	*[ram]:2 addr24 = val;
 }
 
-# EA: #xx:8 immediate data (export immediate sized value)
-EA_imm8: imm8_16 is imm8_16 {
-  local i8:1 = imm8_16;
-  export *:1 i8;
+#MOV:G.B #xx:8, @Rn
+:MOVG.B "#^imm8^, @"^op_reg^"" is ea=0b1101 & lo_bit=0b00000110 & Sz=0 & op_reg & imm8
+{
+	local addr24:3 = zext(op_reg:2);
+	local val:1 = imm8;
+	*[ram]:1 addr24 = val;
 }
 
-# EA: #xx:16 immediate data (export immediate sized value)
-EA_imm16: imm16 is imm16 {
-  local i16:2 = imm16;
-  export *:2 i16;
+#MOV:G.W #xx:8, @Rn
+:MOVG.W "#^imm8^, @"^op_reg^"" is ea=0b1101 & lo_bit=0b00000110 & Sz=1 & op_reg & imm8
+{
+	local addr24:3 = zext(op_reg);
+  	local val16:2 = zext(imm8:1);
+  	*[ram]:2 addr24 = val16;
+}   
+
+#MOV:G.W #xx:16, <EAd>
+:MOVG.W "#^imm16^, @"^op_reg^"" is ea=0b1101 & lo_bit=0b00000111 & Sz=1 & op_reg & imm16
+{
+	local addr24:3 = zext(op_reg);
+	local val:2 = imm16:2;
+	*[ram]:2 addr24 = val;
 }
 
-# -------------
-# MOV instruction family
-# -------------
-# For clarity we break out by direction and size. We use 'Sz' to indicate size (0=byte,1=word)
-# Caller must ensure EA constructors export appropriate sized varnodes or addresses.
 
-:mov_g_b_addrRn_to_Rd is op_hi=0b1101 & Sz_field=0 & r_dst & EA_addr_Rn{
-	r_dst = sext(*:1 EA_addr_Rn);
+# @(d:8,Rn) Column
+
+#MOV:G.B @(d:8,Rn), Rd
+:MOVG.B "@(" ^ disp8 ^ ", " ^ ea_reg ^ "), " ^ op_reg ^ "" is ea=0b1110 & op_code=0b10000 & Sz=0 & ea_reg & op_reg & disp8
+{
+	local base24:3 = zext(ea_reg:2);         # base register Rn
+	local offset24:3 = sext(disp8:1);       # 8-bit signed displacement
+	local addr24:3 = base24 + offset24;   # effective address
+	local val:1 = *[ram]:1 addr24;        # read one byte
+	op_reg = (op_reg & 0xFF00) | zext(val); # load into Rd
 }
 
-:mov_g_w_addrRn_to_Rd is op_hi=0b1101 & Sz_field=1 & r_dst & EA_addr_Rn{
-	r_dst = *:2 EA_addr_Rn;
+# MOV:G.W @(d:8,Rn), Rd
+:MOVG.W "@("^disp8^", "^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b10000 & Sz=1 & ea_reg & op_reg & disp8
+{
+  local base24:3   = zext(ea_reg:2);    # 16-bit register to 24-bit address
+  local offset24:3 = sext(disp8:1);     # sign-extend 8-bit displacement
+  local addr24:3   = base24 + offset24; # effective address
+  local val:2      = *[ram]:2 addr24;   # load 2 bytes from memory
+  op_reg = val;                       # copy to Rd (16-bit)
 }
 
-# MOV.G.W <EA>, Rd
-:mov_g_w_EA_to_Rd EA, r_dst is opcode=0b10001 & EA & r_dst {
-    r_dst = sext(*:2 EA);
+# MOV:G.B RS, @(d:8,Rn)
+:MOVG.B ""^op_reg^", "@("^disp8^","^ea_reg^")"" is ea=0b1110 & op_code=0b10010 & Sz=0 & ea_reg & op_reg & disp8  
+{
+	local base24:3 = zext(ea_reg:2);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+	val:1 = op_reg:1;
+	*[ram]:1 addr24 = val;
 }
 
-# MOV.G.W <EA>, Rd  (load word from EA into Rd)
-:mov_g_w_EA_to_Rd is instr16
-  {
-    # similar to byte version but 2-byte reads
-    local val16:2;
-    r_dst = val16;
-  }
+# MOV:G.W RS, @(d:8,Rn)
+:MOVG.W ""^op_reg^", "@("^disp8^","^ea_reg^")"" is ea=0b1110 & op_code=0b10010 & Sz=1 & ea_reg & op_reg & disp8  
+{
+	local base24:3 = zext(ea_reg:2);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+	val:2 = op_reg:2;
+	*[ram]:2 addr24 = val;
+}
 
-# MOV.G.B Rs, <EAd> (store byte from source register Rs into EA destination)
-:mov_g_b_Rs_to_EA is instr16
-  {
-    # store 1 byte: *[ram]:1 <EA_addr> = regs:1
-    # Placeholder example — actual matching constructor will use EA_addr_* production and then:
-    # *[ram]:1 exported_ea3 = regs:1;
-    nop();
-  }
+# MOV:G.B #xx:8, @(d:8,Rn)
+:MOVG.B "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000110 & Sz=0 & ea_reg & disp8 & imm8
+{
+	local base24:3 = zext(ea_reg:2);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+	local val:1 = imm8;
+	*[ram]:1 addr24 = val;
+} 
 
-# MOV.G.W Rs, <EAd> (store word)
-:mov_g_w_Rs_to_EA is instr16
-  {
-    nop();
-  }
+# MOV:G.W #xx:8, @(d:8,Rn)
+:MOVG.W "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000110 & Sz=1 & ea_reg & disp8 & imm8
+{
+	local base24:3 = zext(ea_reg:2);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+	local val:2 = imm8;
+	*[ram]:2 addr24 = val;
+} 
 
-# MOV.G.B #imm8, <EAd>
-:mov_g_b_imm8_to_EA is instr16
-  {
-    nop();
-  }
+# MOV:G.W #xx:16, @(d:8,Rn)
+:MOVG.W "#"^imm16^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000111 & Sz=1 & ea_reg & disp8 & imm16
+{
+	local base24:3   = zext(ea_reg:2);   # base register Rn (16-bit)
+	local offset24:3 = sext(disp8:1);    # signed 8-bit displacement
+	local addr24:3   = base24 + offset24;
+	local val:2    = imm16;            # 16-bit immediate value
+	*[ram]:2 addr24  = val;            # store to memory
+}
 
-# MOV.G.W #imm8, <EAd> (imm8 zero-extended to word)
-:mov_g_w_imm8_to_EA is instr16
-  {
-    nop();
-  }
+# MOV:G.B @(d:16,Rn), Rd
+:MOVG.B "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b10000 & Sz_32=0 & ea_reg_32 & op_reg_32 & disp16_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:1     = *[ram]:1 addr24;
+	op_reg_32 = (op_reg_32 & 0xFF00) | zext(val);
+}
 
-# MOV.G.W #imm16, <EAd>
-:mov_g_w_imm16_to_EA is instr24
-  {
-    nop();
-  }
+# MOV:G.W @(d:16,Rn), Rd
+:MOVG.W "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b10000 & Sz_32=1 & ea_reg_32 & op_reg_32 & disp16_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:2     = *[ram]:2 addr24;
+	op_reg_32 = (op_reg_32 & 0xFF00) | val;
+}
 
-# -------------
-# LDM / STM / PUSH / POP helpers
-# -------------
+# MOV:G.B Rs, @(d:16,Rn)
+:MOVG.B ""^op_reg_32^", @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & op_code_32=0b10010 & Sz_32=0 & ea_reg_32 & op_reg_32 & disp16_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:1     = op_reg_32:1;
+	*[ram]:1 addr24  = val;
+}
+
+# MOV:G.W Rs, @(d:16,Rn)
+:MOVG.W ""^op_reg_32^", @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & op_code_32=0b10010 & Sz_32=1 & ea_reg_32 & op_reg_32 & disp16_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:2     = op_reg_32:2;
+	*[ram]:2 addr24  = val;
+}
+
+# MOV:G.B #xx:8, @(d:16,Rn)
+:MOVG.B "#"^imm8_32^", @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00000110 & Sz_32=0 & ea_reg_32 & disp16_32 & imm8_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:1     = imm8_32:1;
+	*[ram]:1 addr24  = val;
+}
+
+# MOV:G.W #xx:8, @(d:16,Rn)
+:MOVG.W "#"^imm8_32^", @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00000110 & Sz_32=1 & ea_reg_32 & disp16_32 & imm8_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:2     = zext(imm8_32:1);
+	*[ram]:2 addr24  = val;
+}
+
+# MOV:G.W #xx:16, @(d:16,Rn)
+:MOVG.W "#"^imm16_32^", @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00000111 & Sz_32=1 & ea_reg_32 & disp16_32 & imm16_32
+{
+	local base24:3   = zext(ea_reg_32:2);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3   = base24 + offset24;
+	local val:2     = imm16_32:2;
+	*[ram]:2 addr24  = val;
+}
+
+# @-Rn COLUMN
+#MOV:G.B @-Rn, Rd
+:MOVG.B "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b10000 & Sz=0 & ea_reg & op_reg
+{
+	local temp_ea:2 = ea_reg - 1;   # decrement Rn by 1 (byte)
+	local addr24:3 = zext(temp_ea);
+	local val:1 = *[ram]:1 addr24;
+	op_reg = (op_reg & 0xFF00) | zext(val);
+}
+
+#MOV:G.W @-Rn, Rd
+:MOVG.W "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
+{
+	local temp_ea:2 = ea_reg - 2;   # decrement Rn by 2 (word)
+	local addr24:3 = zext(temp_ea);
+	local val:2 = *[ram]:2 addr24;
+	op_reg = val;
+}
+
+#MOV:G.B Rs, @-Rn
+:MOVG.B ""^op_reg^", @-"^ea_reg^"" is ea=0b1011 & op_code=0b10010 & Sz=0 & op_reg & ea_reg
+{
+	local temp_ea:2 = ea_reg - 1;   # decrement Rn by 1 (byte)
+	local addr24:3 = zext(temp_ea);
+	local val:1 = op_reg:1;
+	*[ram]:1 addr24 = val;
+}
+
+#MOV:G.W Rs, @-Rn
+:MOVG.W ""^op_reg^", @-"^ea_reg^"" is ea=0b1011 & op_code=0b10010 & Sz=1 & op_reg & ea_reg
+{
+	local temp_ea:2 = ea_reg - 2;   # decrement Rn by 2 (word)
+	local addr24:3 = zext(temp_ea);
+	local val:2 = op_reg;
+	*[ram]:2 addr24 = val;
+}
+
+#MOV:G.B #xx:8, @-Rn
+:MOVG.B "#^imm8^, @-"^op_reg^"" is ea=0b1011 & lo_bit=0b00000110 & Sz=0 & op_reg & imm8
+{
+	local temp_op:2 = op_reg - 1;   # decrement Rn by 1 (byte)
+	local addr24:3 = zext(temp_op);
+	local val:1 = imm8;
+	*[ram]:1 addr24 = val;
+}
+
+#MOV:G.W #xx:8, @-Rn
+:MOVG.W "#^imm8^, @-"^op_reg^"" is ea=0b1011 & lo_bit=0b00000110 & Sz=1 & op_reg & imm8
+{
+	local temp_op:2 = op_reg - 2;   # decrement Rn by 2 (word)
+	local addr24:3 = zext(temp_op);
+	local val16:2 = zext(imm8:1);
+	*[ram]:2 addr24 = val16;
+}
+
+#MOV:G.W #xx:16, @-Rn
+:MOVG.W "#^imm16^, @-"^op_reg^"" is ea=0b1011 & lo_bit=0b00000111 & Sz=1 & op_reg & imm16
+{
+	local temp_op:2 = op_reg - 2;   # decrement Rn by 2 (word)
+	local addr24:3 = zext(temp_op);
+	local val:2 = imm16:2;
+	*[ram]:2 addr24 = val;
+}
+
+# STM.W <register list>, @-SP
+:STM.W "^imm8_32^, @-SP" is ea_32=0b1011 & op_code_32=0b00010010 & Sz_32=1 & ea_reg_32 & imm8_32
+{
+    local regmask:1 = imm8_32;    # bits R0..R7
+    local bit:1 = 0;
+    local temp_sp:2 = r7;         # working copy of SP
+    local addr24:3;
+    local val:2;
+
+    <loop>
+    if (bit == 8) goto <done>;
+    # if current bit not set, advance
+    if (((regmask >> bit) & 1) == 0) goto <nextbit>;
+
+    # selected bit is set -> choose register value
+    if (bit == 0) goto <case0>;
+    if (bit == 1) goto <case1>;
+    if (bit == 2) goto <case2>;
+    if (bit == 3) goto <case3>;
+    if (bit == 4) goto <case4>;
+    if (bit == 5) goto <case5>;
+    if (bit == 6) goto <case6>;
+    goto <case7>;   # bit==7
+
+    <case0>
+    val = r0;
+    goto <store>;
+
+    <case1>
+    val = r1;
+    goto <store>;
+
+    <case2>
+    val = r2;
+    goto <store>;
+
+    <case3>
+    val = r3;
+    goto <store>;
+
+    <case4>
+    val = r4;
+    goto <store>;
+
+    <case5>
+    val = r5;
+    goto <store>;
+
+    <case6>
+    val = r6;
+    goto <store>;
+
+    <case7>
+    val = r7;
+    goto <store>;
+
+    <store>
+    temp_sp = temp_sp - 2;         # pre-decrement
+    addr24 = zext(temp_sp);
+    *[ram]:2 addr24 = val;
+    # fall through to increment bit
+    <nextbit>
+    bit = bit + 1;
+    goto <loop>;
+
+    <done>
+    r7 = temp_sp;                  # write back SP
+}
+
+# @Rn+ COLUMN
+# MOV:G.B @Rn+, Rd
+:MOVG.B "@"^ea_reg^"+, "^op_reg^"" is ea=0b1100 & op_code=0b10000 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3   = zext(ea_reg);                     # use original Rn
+    local val:1      = *[ram]:1 addr24;
+    op_reg = (op_reg & 0xFF00) | zext(val);
+
+    local new_ea:2   = ea_reg + 1;                       # post-increment
+    ea_reg = new_ea;                                    # write back to Rn
+}
+
+# MOV:G.W @Rn+, Rd
+:MOVG.W "@"^ea_reg^"+, "^op_reg^"" is ea=0b1100 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
+{
+    local addr24:3   = zext(ea_reg);                     # original Rn
+    local val:2      = *[ram]:2 addr24;
+    op_reg = val;
+
+    local new_ea:2   = ea_reg + 2;                       # post-increment by 2
+    ea_reg = new_ea;
+}
+
+# MOV:G.B Rs, @Rn+
+:MOVG.B ""^op_reg^", @"^ea_reg^"+" is ea=0b1100 & op_code=0b10010 & Sz=0 & op_reg & ea_reg
+{
+	local addr24:3   = zext(ea_reg);                     # original Rn
+	local val:1      = op_reg:1;
+	*[ram]:1 addr24 = val;
+	local new_ea:2   = ea_reg + 1;                       # post-increment
+	ea_reg = new_ea;
+}
+
+# MOV:G.W Rs, @Rn+
+:MOVG.W ""^op_reg^", @"^ea_reg^"+" is ea=0b1100 & op_code=0b10010 & Sz=1 & op_reg & ea_reg
+{
+	local addr24:3   = zext(ea_reg);                     # original Rn
+	local val:2      = op_reg;
+	*[ram]:2 addr24 = val;
+	local new_ea:2   = ea_reg + 2;                       # post-increment
+	ea_reg = new_ea;
+}
+
+#TODO: Verify these 4 instructions
+
+# MOV:G.B #xx:8, @Rn+
+:MOVG.B "#^imm8^, @"^op_reg^"+" is ea=0b1100 & lo_bit=0b00000110 & Sz=0 & op_reg & imm8
+{
+	local addr24:3   = zext(op_reg);                     # original Rn
+	local val:1      = imm8;
+	*[ram]:1 addr24 = val;
+	local new_op:2   = op_reg + 1;                       # post-increment
+	op_reg = new_op;
+}
+
+# MOV:G.W #xx:8, @Rn+
+:MOVG.W ""^imm8^", @"^op_reg^"+" is ea=0b1100 & lo_bit=0b00000110 & Sz=1 & op_reg & imm8
+{
+	local addr24:3   = zext(op_reg);                     # original Rn
+	local val16:2    = zext(imm8:1);
+	*[ram]:2 addr24 = val16;
+	local new_op:2   = op_reg + 2;                       # post-increment
+	op_reg = new_op;
+}
+
+# MOV:G.W #xx:16, @Rn+
+:MOVG.W "#"^imm16^", @"^op_reg^"+" is ea=0b1100 & lo_bit=0b00000111 & Sz=1 & op_reg & imm16
+{
+	local addr24:3   = zext(op_reg);                     # original Rn
+	local val:2      = imm16:2;
+	*[ram]:2 addr24 = val;
+	local new_op:2   = op_reg + 2;                       # post-increment
+	op_reg = new_op;
+}
+
 # LDM.W @SP+, <register list>
-# Exact encoding requires register-list operand parsing; implement a sample that handles register-list bitmask.
-:ldm_w_sp_postinc is instr16
-  {
-    # Typically the low 8 bits of the following word encode register list. We'll simulate:
-    local regmask:2 = imm16;    # placeholder
-    local addr3:3 = zext(sp);
-    # for each bit set, pop word into the corresponding register (order per manual)
-    # We'll do a simple loop-like sequence via conditional assigns (manual will need more precise decoding)
-    # Example for bit0->r0:
-    if ((regmask & 0x0001) != 0) goto load_r0;
-    # Update SP
-    sp = sp + 2 * zext(((regmask) & 0x00FF)); # approximate
-  }
-:load_r0 {
-	r0 = *[ram]:2 sp;
-	sp = sp + 2;
+:LDM.W "@SP+, "^imm8_32^"" is ea_32=0b1100 & op_code_32=0b00010000 & Sz_32=1 & ea_reg_32 & imm8_32
+{
+	local regmask:1 = imm8_32;    # bits R0..R7
+	local bit:1 = 0;
+	local temp_sp:2 = r7;         # working copy of SP
+	local addr24:3;
+	local val:2;
+
+	<loop>
+	if (bit == 8) goto <done>;
+	# if current bit not set, advance
+	if (((regmask >> bit) & 1) == 0) goto <nextbit>;
+
+	# selected bit is set -> choose register value
+	if (bit == 0) goto <case0>;
+	if (bit == 1) goto <case1>;
+	if (bit == 2) goto <case2>;
+	if (bit == 3) goto <case3>;
+	if (bit == 4) goto <case4>;
+	if (bit == 5) goto <case5>;
+	if (bit == 6) goto <case6>;
+	goto <case7>;   # bit==7
+
+	<case0>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r0 = val;
+	goto <advance>;
+
+	<case1>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r1 = val;
+	goto <advance>;
+
+	<case2>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r2 = val;
+	goto <advance>;
+
+	<case3>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r3 = val;
+	goto <advance>;
+
+	<case4>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r4 = val;
+	goto <advance>;
+
+	<case5>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r5 = val;
+	goto <advance>;
+
+	<case6>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r6 = val;
+	goto <advance>;
+	<case7>
+	addr24 = zext(temp_sp);
+	val = *[ram]:2 addr24;
+	r7 = val;
+	goto <advance>;
+	<advance>
+	temp_sp = temp_sp + 2;         # post-increment
+	# fall through to increment bit
+	<nextbit>
+	bit = bit + 1;
+	goto <loop>;
+	<done>
+	r7 = temp_sp;                  # write back SP
 }
-# STM.W <register list>, @-SP  (store multiple registers to stack pre-decrement)
-:stm_w_predec_sp is instr16
-  {
-    nop();
-  }
-
-# XCH.W Rs,Rd  (exchange word)
-:xch_w_rs_rd is instr16
-  {
-    local tmp:2 = r_dst;
-    r_dst = r_src;
-    r_src = tmp;
-  }
-
-# SWAP.B Rd (swap byte order inside word)
-:swap_b_rd is instr16
-  {
-    local tmp0:2 = r_dst;
-    local low:1 = tmp0:1;
-    local mid:1 = (tmp0 >> 8) & 0xFF;
-    local high:1 = (tmp0 >> 16) & 0xFF;
-    # simple byte-swap for 16-bit: rotate bytes
-    r_dst = ((tmp0 & 0x00FF) << 8) | ((tmp0 & 0xFF00) >> 8);
-  }
-
-# Fallback unknown data opcodes -> no-op (prevents failing on unimplemented encodings)
-:unknown_data is instr8 { nop(); }
-
-# End of h8500_data.sinc
