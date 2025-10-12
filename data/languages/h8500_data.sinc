@@ -431,33 +431,33 @@
 #TODO: Verify these 4 instructions
 
 # MOV:G.B #xx:8, @Rn+
-:MOVG.B "#^imm8^, @"^op_reg^"+" is ea=0b1100 & lo_bit=0b00000110 & Sz=0 & op_reg & imm8
+:MOVG.B "#^imm8^, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00000110 & Sz=0 & ea_reg & imm8
 {
-	local addr24:3   = zext(op_reg);                     # original Rn
+	local addr24:3   = zext(ea_reg);                     # original Rn
 	local val:1      = imm8;
 	*[ram]:1 addr24 = val;
-	local new_op:2   = op_reg + 1;                       # post-increment
-	op_reg = new_op;
+	local new_ea:2   = ea_reg + 1;                       # post-increment
+	ea_reg = new_ea;
 }
 
 # MOV:G.W #xx:8, @Rn+
-:MOVG.W ""^imm8^", @"^op_reg^"+" is ea=0b1100 & lo_bit=0b00000110 & Sz=1 & op_reg & imm8
+:MOVG.W ""^imm8^", @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00000110 & Sz=1 & ea_reg & imm8
 {
-	local addr24:3   = zext(op_reg);                     # original Rn
+	local addr24:3   = zext(ea_reg);                     # original Rn
 	local val16:2    = zext(imm8:1);
 	*[ram]:2 addr24 = val16;
-	local new_op:2   = op_reg + 2;                       # post-increment
-	op_reg = new_op;
+	local new_ea:2   = ea_reg + 2;                       # post-increment
+	ea_reg = new_ea;
 }
 
 # MOV:G.W #xx:16, @Rn+
-:MOVG.W "#"^imm16^", @"^op_reg^"+" is ea=0b1100 & lo_bit=0b00000111 & Sz=1 & op_reg & imm16
+:MOVG.W "#"^imm16^", @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00000111 & Sz=1 & ea_reg & imm16
 {
-	local addr24:3   = zext(op_reg);                     # original Rn
+	local addr24:3   = zext(ea_reg);                     # original Rn
 	local val:2      = imm16:2;
 	*[ram]:2 addr24 = val;
-	local new_op:2   = op_reg + 2;                       # post-increment
-	op_reg = new_op;
+	local new_ea:2   = ea_reg + 2;                       # post-increment
+	ea_reg = new_ea;
 }
 
 # LDM.W @SP+, <register list>
@@ -539,3 +539,140 @@
 	<done>
 	r7 = temp_sp;                  # write back SP
 }
+
+# @aa:8 column
+# MOV:G.B @aa:8, Rd
+:MOVG.B "@("^disp8^"), "^op_reg^"" is ea=0b0000 & op_code=0b10000 & Sz=0 & ea_reg=0b101 & disp8 & op_reg
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1   = *[ram]:1 addr24;
+    op_reg = (op_reg & 0xFF00) | zext(val8);
+}
+
+# MOV:G.W @aa:8, Rd
+:MOVG.W "@("^disp8^"), "^op_reg^"" is ea=0b0000 & op_code=0b10000 & Sz=1 & ea_reg=0b101 & disp8 & op_reg
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);
+    local val16:2  = *[ram]:2 addr24;
+    op_reg = val16;
+}
+
+# MOV:G.B Rs, @aa:8
+:MOVG.B ""^op_reg^", @("^disp8^")" 
+  is ea=0b0000 & op_code=0b10010 & Sz=0 & ea_reg=0b101 & disp8 & op_reg
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1   = op_reg:1;
+    *[ram]:1 addr24 = val8;
+}
+
+# MOV:G.W Rs, @aa:8
+:MOVG.W ""^op_reg^", @("^disp8^")" 
+  is ea=0b0000 & op_code=0b10010 & Sz=1 & ea_reg=0b101 & disp8 & op_reg
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);
+    local val16:2  = op_reg;
+    *[ram]:2 addr24 = val16;
+}
+
+# MOV:G.B #xx:8, @aa:8
+:MOVG.B "#"^imm8^", @("^disp8^")" 
+  is ea=0b0000 & lo_bit=0b00000110 & Sz=0 & ea_reg=0b101 & disp8 & imm8
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:1    = imm8;
+    *[ram]:1 addr24 = val;
+}
+
+# MOV:G.W #xx:8, @aa:8
+:MOVG.W "#"^imm8^", @("^disp8^")" 
+  is ea=0b0000 & lo_bit=0b00000110 & Sz=1 & ea_reg=0b101 & disp8 & imm8
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);
+    local val:2    = zext(imm8:1);
+    *[ram]:2 addr24 = val;
+}
+
+# MOV:G.W #xx:16, @aa:8
+:MOVG.W "#"^imm16^", @("^disp8^")" is ea=0b0000 & lo_bit=0b00000111 & Sz=1 & ea_reg=0b101 & disp8 & imm16
+{
+	local addr24:3 = 0xFF00 | zext(disp8:1);
+	local val:2    = imm16:2;
+	*[ram]:2 addr24 = val;
+}
+
+# @aa:16 column
+# MOV:G.B @aa:16, Rd
+:MOVG.B "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & op_code_32=0b10000 & Sz_32=0 & ea_reg_32=0b101 & disp16_32 & op_reg_32
+{
+    local addr24:3 = zext(disp16_32:2);       # absolute 16-bit address
+    local val:1   = *[ram]:1 addr24;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(val);
+}
+
+# MOV:G.W @aa:16, Rd
+:MOVG.W "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & op_code_32=0b10000 & Sz_32=1 & ea_reg_32=0b101 & disp16_32 & op_reg_32
+{
+    local addr24:3 = zext(disp16_32:2);
+    local val:2  = *[ram]:2 addr24;
+    op_reg_32 = val;
+}
+
+# MOV:G.B Rs, @aa:16
+:MOVG.B ""^op_reg_32^", @("^disp16_32^")" is ea_32=0b0001 & op_code_32=0b10010 & Sz_32=0 & ea_reg_32=0b101 & disp16_32 & op_reg_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val8:1   = op_reg_32:1;
+    *[ram]:1 addr24 = val8;
+}
+
+# MOV:G.W Rs, @aa:16
+:MOVG.W ""^op_reg_32^", @("^disp16_32^")" is ea_32=0b0001 & op_code_32=0b10010 & Sz_32=1 & ea_reg_32=0b101 & disp16_32 & op_reg_32
+{
+    local addr24:3 = zext(disp16_32:2);
+    local val16:2  = op_reg_32;
+    *[ram]:2 addr24 = val16;
+}
+
+# MOV:G.B #xx:8, @aa:16
+:MOVG.B "#"^imm8_32^", @("^disp16_32^")" 
+  is ea_32=0b0001 & lo_bit_32=0b00000110 & Sz_32=0 & ea_reg_32=0b101 & disp16_32 & imm8_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val:1    = imm8_32:1;
+    *[ram]:1 addr24 = val;
+}
+
+# MOV:G.W #xx:8, @aa:16
+:MOVG.W "#"^imm8_32^", @("^disp16_32^")" 
+  is ea_32=0b0001 & lo_bit_32=0b00000110 & Sz_32=1 & ea_reg_32=0b101 & disp16_32 & imm8_32
+{
+    local addr24:3 = zext(disp16_32:2);
+    local val:2    = zext(imm8_32:1);
+    *[ram]:2 addr24 = val;
+}
+
+# MOV:G.W #xx:16, @aa:16
+:MOVG.W "#"^imm16_32^", @("^disp16_32^")" 
+  is ea_32=0b0001 & lo_bit_32=0b00000111 & Sz_32=1 & ea_reg_32=0b101 & disp16_32 & imm16_32
+{
+    local addr24:3 = zext(disp16_32:2);
+    local val:2    = imm16_32:2;
+    *[ram]:2 addr24 = val;
+}
+
+# #xx:8 column
+# MOV:G.B #xx:8, Rd
+:MOVG.B "#"^imm8^", "^op_reg^"" is ea=0b0000 & op_code=0b10000 & Sz=0 & ea_reg=0b100 & imm8 & op_reg
+{
+    op_reg = (op_reg & 0xFF00) | zext(imm8:1);
+}
+
+# #xx:16 column
+# MOV:G.W #xx:16, Rd
+:MOVG.W "#"^imm16_32^", "^op_reg_32^"" 
+  is ea_32=0b0000 & ea_reg_32=0b110 & op_code_32=0b10000 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    op_reg_32 = imm16_32:2;
+}
+
