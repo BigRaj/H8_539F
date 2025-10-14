@@ -1,16 +1,8 @@
 #
 # h8500_mov.sinc
 # Data-transfer group for H8/539F (MOV family)
-# Depends on h8500_tokens.sinc
+# Depends on h8500_definitions.sinc
 #
-
-# We assume h8500_tokens.sinc is already @included and defines:
-# - spaces: ram, register
-# - registers: r0..r7, er0..er7, sp, fp, pc, ccr, dp/ep/tp/br
-# - tokens: instr16, instr24, instr32
-# - helper macros: push_val16/pop_val16
-# - flag aliases: Z_FLAG, N_FLAG, etc.
-# - attach mapping for 3-bit register fields -> r0..r7
 
 # -------------
 # Effective Address constructors
@@ -675,4 +667,3 @@
 {
     op_reg_32 = imm16_32:2;
 }
-

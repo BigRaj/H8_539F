@@ -2,3 +2,4 @@
 
 @include "h8500_definitions.sinc"
 @include "h8500_data.sinc"
+@include "h8500_arithmetic.sinc"
