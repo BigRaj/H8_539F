@@ -135,7 +135,7 @@
 # ADD:G.W @-Rn, Rd
 :ADDG.W "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b00100 & Sz=1 & ea_reg & op_reg
 {
-    local temp_ea:2 = ea_reg - 1;         # pre-decrement (byte)
+    local temp_ea:2 = ea_reg - 2;         # pre-decrement (word)
     local addr24:3  = zext(temp_ea);
     local val:2    = *[ram]:2 addr24;
     local result:2 = op_reg + val;
@@ -151,7 +151,7 @@
     local result:2 = op_reg + val;
     op_reg = result;
 
-    local new_ea:2 = ea_reg + 1;           # post-increment (byte)
+    local new_ea:2 = ea_reg + 2;           # post-increment (word)
     ea_reg = new_ea;
 }
 
@@ -173,9 +173,6 @@
     op_reg_32 = result;
 }
 
-
-# TODO: NEED TO TEST THIS
-
 # ADD:G.W #xx:16, Rd
 :ADDG.W "#"^imm16_32^", "^op_reg_32^"" is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b00100 & Sz_32=1 & imm16_32 & op_reg_32
 {
@@ -185,3 +182,1011 @@
 }
 
 
+#Add:Q.B #1 row
+
+# ADD:Q.B #1, Rn
+:ADDQ.B "#1, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001000 & Sz=0 & ea_reg
+{
+    local result8:1 = ea_reg:1 + 1;
+    ea_reg = (ea_reg & 0xFF00) | zext(result8);
+}
+
+# ADD:Q.B #1, @Rn
+:ADDQ.B "#1, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001000 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #1, @(d:8,Rn)
+:ADDQ.B "#1, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001000 & Sz=0 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #1, @(d:16,Rn)
+:ADDQ.B "#1, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001000 & Sz_32=0 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #1, @-Rn
+:ADDQ.B "#1, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001000 & Sz=0 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 1;       # pre-decrement (byte)
+    local addr24:3  = zext(temp_ea);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.B #1, @Rn+
+:ADDQ.B "#1, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001000 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+
+    local new_ea:2 = ea_reg + 1;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.B #1, @aa:8
+:ADDQ.B "#1, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001000 & Sz=0 & disp8
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #1, @aa:16
+:ADDQ.B "#1, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001000 & Sz_32=0 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 + 1;
+    *[ram]:1 addr24 = val8;
+}
+
+
+#Add:Q.W #1 row
+
+# ADD:Q.W #1, Rn
+:ADDQ.W "#1, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001000 & Sz=1 & ea_reg
+{
+    local result:2 = ea_reg:2 + 1;
+    ea_reg = result;
+}
+
+# ADD:Q.W #1, @Rn
+:ADDQ.W "#1, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001000 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #1, @(d:8,Rn)
+:ADDQ.W "#1, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001000 & Sz=1 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #1, @(d:16,Rn)
+:ADDQ.W "#1, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001000 & Sz_32=1 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #1, @-Rn
+:ADDQ.W "#1, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001000 & Sz=1 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 2;       # pre-decrement (word)
+    local addr24:3  = zext(temp_ea);
+    local val:2    = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.W #1, @Rn+
+:ADDQ.W "#1, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001000 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val:2    = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+
+    local new_ea:2 = ea_reg + 2;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.W #1, @aa:8
+:ADDQ.W "#1, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001000 & Sz=1 & disp8
+{
+    local addr24:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #1, @aa:16
+:ADDQ.W "#1, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001000 & Sz_32=1 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val + 1;
+    *[ram]:2 addr24 = val;
+}
+
+#TODO: VERIFY EVERYTHING BELOW THIS:
+#Add:Q.B #2 row
+
+# ADD:Q.B #2, Rn
+:ADDQ.B "#2, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001001 & Sz=0 & ea_reg
+{
+    local result8:1 = ea_reg:1 + 2;
+    ea_reg = (ea_reg & 0xFF00) | zext(result8);
+}
+
+# ADD:Q.B #2, @Rn
+:ADDQ.B "#2, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001001 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #2, @(d:8,Rn)
+:ADDQ.B "#2, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001001 & Sz=0 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #2, @(d:16,Rn)
+:ADDQ.B "#2, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001001 & Sz_32=0 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #2, @-Rn
+:ADDQ.B "#2, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001001 & Sz=0 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 1;       # pre-decrement (byte)
+    local addr24:3  = zext(temp_ea);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.B #2, @Rn+
+:ADDQ.B "#2, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001001 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+
+    local new_ea:2 = ea_reg + 1;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.B #2, @aa:8
+:ADDQ.B "#2, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001001 & Sz=0 & disp8
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #2, @aa:16
+:ADDQ.B "#2, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001001 & Sz_32=0 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 + 2;
+    *[ram]:1 addr24 = val8;
+}
+
+
+#Add:Q.W #2 row
+
+# ADD:Q.W #2, Rn
+:ADDQ.W "#2, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001001 & Sz=1 & ea_reg
+{
+    local result:2 = ea_reg:2 + 2;
+    ea_reg = result;
+}
+
+# ADD:Q.W #2, @Rn
+:ADDQ.W "#2, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001001 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #2, @(d:8,Rn)
+:ADDQ.W "#2, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001001 & Sz=1 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #2, @(d:16,Rn)
+:ADDQ.W "#2, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001001 & Sz_32=1 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #2, @-Rn
+:ADDQ.W "#2, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001001 & Sz=1 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 2;       # pre-decrement (word)
+    local addr24:3  = zext(temp_ea);
+    local val:2    = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.W #2, @Rn+
+:ADDQ.W "#2, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001001 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val:2    = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+
+    local new_ea:2 = ea_reg + 2;        # post-increment (word)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.W #2, @aa:8
+:ADDQ.W "#2, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001001 & Sz=1 & disp8
+{
+    local addr24:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #2, @aa:16
+:ADDQ.W "#2, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001001 & Sz_32=1 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val + 2;
+    *[ram]:2 addr24 = val;
+}
+
+
+#Add:Q.B #-1 row
+
+# ADD:Q.B #-1, Rn
+:ADDQ.B "#-1, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001100 & Sz=0 & ea_reg
+{
+    local result8:1 = ea_reg:1 - 1;
+    ea_reg = (ea_reg & 0xFF00) | zext(result8);
+}
+
+# ADD:Q.B #-1, @Rn
+:ADDQ.B "#-1, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001100 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-1, @(d:8,Rn)
+:ADDQ.B "#-1, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001100 & Sz=0 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-1, @(d:16,Rn)
+:ADDQ.B "#-1, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001100 & Sz_32=0 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-1, @-Rn
+:ADDQ.B "#-1, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001100 & Sz=0 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 1;       # pre-decrement (byte)
+    local addr24:3  = zext(temp_ea);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.B #-1, @Rn+
+:ADDQ.B "#-1, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001100 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+
+    local new_ea:2 = ea_reg + 1;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.B #-1, @aa:8
+:ADDQ.B "#-1, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001100 & Sz=0 & disp8
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-1, @aa:16
+:ADDQ.B "#-1, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001100 & Sz_32=0 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 - 1;
+    *[ram]:1 addr24 = val8;
+}
+
+
+#Add:Q.W #-1 row
+
+# ADD:Q.W #-1, Rn
+:ADDQ.W "#-1, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001100 & Sz=1 & ea_reg
+{
+    local result:2 = ea_reg:2 - 1;
+    ea_reg = result;
+}
+
+# ADD:Q.W #-1, @Rn
+:ADDQ.W "#-1, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001100 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-1, @(d:8,Rn)
+:ADDQ.W "#-1, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001100 & Sz=1 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-1, @(d:16,Rn)
+:ADDQ.W "#-1, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001100 & Sz_32=1 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-1, @-Rn
+:ADDQ.W "#-1, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001100 & Sz=1 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 2;       # pre-decrement (word)
+    local addr24:3  = zext(temp_ea);
+    local val:2    = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.W #-1, @Rn+
+:ADDQ.W "#-1, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001100 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val:2    = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+
+    local new_ea:2 = ea_reg + 2;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.W #-1, @aa:8
+:ADDQ.W "#-1, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001100 & Sz=1 & disp8
+{
+    local addr24:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-1, @aa:16
+:ADDQ.W "#-1, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001100 & Sz_32=1 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val - 1;
+    *[ram]:2 addr24 = val;
+}
+
+
+#Add:Q.B #-2 row
+
+# ADD:Q.B #-2, Rn
+:ADDQ.B "#-2, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001101 & Sz=0 & ea_reg
+{
+    local result8:1 = ea_reg:1 - 2;
+    ea_reg = (ea_reg & 0xFF00) | zext(result8);
+}
+
+# ADD:Q.B #-2, @Rn
+:ADDQ.B "#-2, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001101 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-2, @(d:8,Rn)
+:ADDQ.B "#-2, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001101 & Sz=0 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-2, @(d:16,Rn)
+:ADDQ.B "#-2, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001101 & Sz_32=0 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-2, @-Rn
+:ADDQ.B "#-2, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001101 & Sz=0 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 1;       # pre-decrement (byte)
+    local addr24:3  = zext(temp_ea);
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.B #-2, @Rn+
+:ADDQ.B "#-2, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001101 & Sz=0 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val8:1    = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+
+    local new_ea:2 = ea_reg + 1;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.B #-2, @aa:8
+:ADDQ.B "#-2, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001101 & Sz=0 & disp8
+{
+    local addr24:3 = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+}
+
+# ADD:Q.B #-2, @aa:16
+:ADDQ.B "#-2, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001101 & Sz_32=0 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val8:1   = *[ram]:1 addr24;
+    val8 = val8 - 2;
+    *[ram]:1 addr24 = val8;
+}
+
+
+#Add:Q.W #-2 row
+
+# ADD:Q.W #-2, Rn
+:ADDQ.W "#-2, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001101 & Sz=1 & ea_reg
+{
+    local result:2 = ea_reg:2 - 2;
+    ea_reg = result;
+}
+
+# ADD:Q.W #-2, @Rn
+:ADDQ.W "#-2, @"^ea_reg^"" is ea=0b1101 & lo_bit=0b00001101 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-2, @(d:8,Rn)
+:ADDQ.W "#-2, @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00001101 & Sz=1 & ea_reg & disp8
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-2, @(d:16,Rn)
+:ADDQ.W "#-2, @("^disp16_32^","^ea_reg_32^")" is ea_32=0b1111 & lo_bit_32=0b00001101 & Sz_32=1 & ea_reg_32 & disp16_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-2, @-Rn
+:ADDQ.W "#-2, @-"^ea_reg^"" is ea=0b1011 & lo_bit=0b00001101 & Sz=1 & ea_reg
+{
+    local temp_ea:2 = ea_reg - 2;       # pre-decrement (word)
+    local addr24:3  = zext(temp_ea);
+    local val:2    = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+    ea_reg = temp_ea;                   # write back updated Rn
+}
+
+# ADD:Q.W #-2, @Rn+
+:ADDQ.W "#-2, @"^ea_reg^"+" is ea=0b1100 & lo_bit=0b00001101 & Sz=1 & ea_reg
+{
+    local addr24:3  = zext(ea_reg);     # use original Rn
+    local val:2    = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+
+    local new_ea:2 = ea_reg + 2;        # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADD:Q.W #-2, @aa:8
+:ADDQ.W "#-2, @("^disp8^")" is ea=0b0000 & ea_reg=0b101 & lo_bit=0b00001101 & Sz=1 & disp8
+{
+    local addr24:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+}
+
+# ADD:Q.W #-2, @aa:16
+:ADDQ.W "#-2, @("^disp16_32^")" is ea_32=0b0001 & ea_reg_32=0b101 & lo_bit_32=0b00001101 & Sz_32=1 & disp16_32
+{
+    local addr24:3 = zext(disp16_32:2);   # absolute 16-bit address
+    local val:2   = *[ram]:2 addr24;
+    val = val - 2;
+    *[ram]:2 addr24 = val;
+}
+
+
+#ADDS.B Row
+
+# ADDS.B Rn, Rd
+:ADDS.B ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b00101 & Sz=0 & ea_reg & op_reg
+{
+    local val:1    = ea_reg:1;
+    local result:1 = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+}
+
+# ADDS.B @Rn, Rd
+:ADDS.B "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b00101 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val8:1    = *[ram]:1 addr24;
+    local result8:1 = op_reg:1 + val8;
+    op_reg = (op_reg & 0xFF00) | zext(result8);
+}
+
+# ADDS.B @(d:8,Rn), Rd
+:ADDS.B "@("^disp8^","^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b00101 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    local result8:1  = op_reg:1 + val8;
+    op_reg = (op_reg & 0xFF00) | zext(result8);
+}
+
+# ADDS.B @(d:16,Rn), Rd
+:ADDS.B "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b00101 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val8:1     = *[ram]:1 addr24;
+    local result8:1  = op_reg_32:1 + val8;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(result8);
+}
+
+# ADDS.B @-Rn, Rd
+:ADDS.B "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b00101 & Sz=0 & ea_reg & op_reg
+{
+    local temp_ea:2  = ea_reg - 1;           # pre-decrement (byte)
+    local addr24:3   = zext(temp_ea);
+    local val8:1     = *[ram]:1 addr24;
+    local result8:1  = op_reg:1 + val8;
+    op_reg = (op_reg & 0xFF00) | zext(result8);
+    ea_reg = temp_ea;                        # write back updated Rn
+}
+
+# ADDS.B @Rn+, Rd
+:ADDS.B "@"^ea_reg^"+, "^op_reg^"" is ea=0b1100 & op_code=0b00101 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3   = zext(ea_reg);         # use original Rn
+    local val8:1     = *[ram]:1 addr24;
+    local result8:1  = op_reg:1 + val8;
+    op_reg = (op_reg & 0xFF00) | zext(result8);
+
+    local new_ea:2 = ea_reg + 1;             # post-increment (byte)
+    ea_reg = new_ea;
+}
+
+# ADDS.B @aa:8, Rd
+:ADDS.B "@("^disp8^"), "^op_reg^"" is ea=0b0000 & ea_reg=0b101 & op_code=0b00101 & Sz=0 & disp8 & op_reg
+{
+    local addr24:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val8:1    = *[ram]:1 addr24;
+    local result8:1 = op_reg:1 + val8;
+    op_reg = (op_reg & 0xFF00) | zext(result8);
+}
+
+# ADDS.B @aa:16, Rd
+:ADDS.B "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00101 & Sz_32=0 & disp16_32 & op_reg_32
+{
+    local addr24:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val8:1    = *[ram]:1 addr24;
+    local result8:1 = op_reg_32:1 + val8;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(result8);
+}
+
+# ADDS.B #xx:8, Rd
+:ADDS.B "#"^imm8^", "^op_reg^"" is ea=0b0000 & ea_reg=0b100 & op_code=0b00101 & Sz=0 & imm8 & op_reg
+{
+    local val8:1    = imm8:1;
+    local result8:1 = op_reg:1 + val8;
+    op_reg = (op_reg & 0xFF00) | zext(result8);
+}
+
+
+#ADDS.W Row
+
+# ADDS.W Rn, Rd
+:ADDS.W ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b00101 & Sz=1 & ea_reg & op_reg
+{
+    local val:2    = ea_reg;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDS.W @Rn, Rd
+:ADDS.W "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b00101 & Sz=1 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDS.W @(d:8,Rn), Rd
+:ADDS.W "@("^disp8^","^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b00101 & Sz=1 & ea_reg & disp8 & op_reg
+{
+    local base24:3   = zext(ea_reg);
+    local offset24:3 = sext(disp8:1);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    local result:2  = op_reg + val;
+    op_reg = result;
+}
+
+# ADDS.W @(d:16,Rn), Rd
+:ADDS.W "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b00101 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local base24:3   = zext(ea_reg_32);
+    local offset24:3 = sext(disp16_32:2);
+    local addr24:3   = base24 + offset24;
+    local val:2     = *[ram]:2 addr24;
+    local result:2  = op_reg_32 + val;
+    op_reg_32 = result;
+}
+
+# ADDS.W @-Rn, Rd
+:ADDS.W "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b00101 & Sz=1 & ea_reg & op_reg
+{
+    local temp_ea:2  = ea_reg - 2;           # pre-decrement (word)
+    local addr24:3   = zext(temp_ea);
+    local val:2     = *[ram]:2 addr24;
+    local result:2  = op_reg + val;
+    op_reg = result;
+    ea_reg = temp_ea;                        # write back updated Rn
+}
+
+# ADDS.W @Rn+, Rd
+:ADDS.W "@"^ea_reg^"+, "^op_reg^"" is ea=0b1100 & op_code=0b00101 & Sz=1 & ea_reg & op_reg
+{
+    local addr24:3   = zext(ea_reg);         # use original Rn
+    local val:2     = *[ram]:2 addr24;
+    local result:2  = op_reg + val;
+    op_reg = result;
+
+    local new_ea:2 = ea_reg + 2;             # post-increment (word)
+    ea_reg = new_ea;
+}
+
+# ADDS.W @aa:8, Rd
+:ADDS.W "@("^disp8^"), "^op_reg^"" is ea=0b0000 & ea_reg=0b101 & op_code=0b00101 & Sz=1 & disp8 & op_reg
+{
+    local addr24:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDS.W @aa:16, Rd
+:ADDS.W "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00101 & Sz_32=1 & disp16_32 & op_reg_32
+{
+    local addr24:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg_32 + val;
+    op_reg_32 = result;
+}
+
+# ADDS.W #xx:16, Rd
+:ADDS.W "#"^imm16_32^", "^op_reg_32^"" is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b00101 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    local val:2    = imm16_32:2;
+    local result:2 = op_reg_32 + val;
+    op_reg_32 = result;
+}
+
+
+# ADDX.B Row
+
+# ADDX.B Rn, Rd
+:ADDX.B ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10100 & Sz=0 & ea_reg & op_reg
+{
+    local val:1    = ea_reg:1;
+    local result:1 = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+}
+
+# ADDX.B @Rn, Rd
+:ADDX.B "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b10100 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+}
+
+# ADDX.B @(d:8,Rn), Rd
+:ADDX.B "@("^disp8^","^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b10100 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local addr24:3  = zext(ea_reg) + sext(disp8:1);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+}
+
+# ADDX.B @(d:16,Rn), Rd
+:ADDX.B "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b10100 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr24:3  = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg_32:1 + val;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(result);
+}
+
+# ADDX.B @-Rn, Rd
+:ADDX.B "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b10100 & Sz=0 & ea_reg & op_reg
+{
+    local temp_ea:2 = ea_reg - 1;
+    local addr24:3 = zext(temp_ea);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    ea_reg = temp_ea;
+}
+
+# ADDX.B @Rn+, Rd
+:ADDX.B "@"^ea_reg^"+, "^op_reg^"" is ea=0b1100 & op_code=0b10100 & Sz=0 & ea_reg & op_reg
+{
+	local addr24:3 = zext(ea_reg);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    ea_reg = ea_reg + 1;
+}
+
+# ADDX.B @aa:8, Rd
+:ADDX.B "@("^disp8^"), "^op_reg^"" is ea=0b0000 & ea_reg=0b101 & op_code=0b10100 & Sz=0 & disp8 & op_reg
+{
+	local addr24:3 = 0xFF00 | zext(disp8:1);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg:1 + val;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+}
+
+# ADDX.B @aa:16, Rd
+:ADDX.B "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10100 & Sz_32=0 & disp16_32 & op_reg_32
+{
+	local addr24:3 = zext(disp16_32:2);
+    local val:1     = *[ram]:1 addr24;
+    local result:1  = op_reg_32:1 + val;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(result);
+}
+
+# ADDX.B #xx:8, Rd
+:ADDX.B "#"^imm8^", "^op_reg^"" is ea=0b0000 & ea_reg=0b100 & op_code=0b10100 & Sz=0 & imm8 & op_reg
+{
+    local result:1 = op_reg:1 + imm8:1;
+    op_reg = (op_reg & 0xFF00) | zext(result);
+}
+
+
+# ADDX.W Row
+
+# ADDX.W Rn, Rd
+:ADDX.W ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10100 & Sz=1 & ea_reg & op_reg
+{
+    local val:2    = ea_reg;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDX.W @Rn, Rd
+:ADDX.W "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b10100 & Sz=1 & ea_reg & op_reg
+{
+	local addr24:3 = zext(ea_reg);
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDX.W @(d:8,Rn), Rd
+:ADDX.W "@("^disp8^","^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b10100 & Sz=1 & ea_reg & disp8 & op_reg
+{
+	local base24:3 = zext(ea_reg);
+	local offset24:3 = sext(disp8:1);
+	local addr24:3 = base24 + offset24;
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDX.W @(d:16,Rn), Rd
+:ADDX.W "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b10100 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+	local base24:3 = zext(ea_reg_32);
+	local offset24:3 = sext(disp16_32:2);
+	local addr24:3 = base24 + offset24;
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg_32 + val;
+    op_reg_32 = result;
+}
+
+# ADDX.W @-Rn, Rd
+:ADDX.W "@-"^ea_reg^", "^op_reg^"" is ea=0b1011 & op_code=0b10100 & Sz=1 & ea_reg & op_reg
+{
+    local temp_ea:2 = ea_reg - 2;
+    local addr24:3 = zext(temp_ea);
+    local val:2     = *[ram]:2 addr24;
+    local result:2  = op_reg + val;
+    op_reg = result;
+    ea_reg = temp_ea;
+}
+
+# ADDX.W @Rn+, Rd
+:ADDX.W "@"^ea_reg^"+, "^op_reg^"" is ea=0b1100 & op_code=0b10100 & Sz=1 & ea_reg & op_reg
+{
+	local addr24:3 = zext(ea_reg);
+    local val:2     = *[ram]:2 addr24;
+    local result:2  = op_reg + val;
+    op_reg = result;
+    ea_reg = ea_reg + 2;
+}
+
+# ADDX.W @aa:8, Rd
+:ADDX.W "@("^disp8^"), "^op_reg^"" is ea=0b0000 & ea_reg=0b101 & op_code=0b10100 & Sz=1 & disp8 & op_reg
+{
+	local addr24:3 = 0xFF00 | zext(disp8:1);
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg + val;
+    op_reg = result;
+}
+
+# ADDX.W @aa:16, Rd
+:ADDX.W "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10100 & Sz_32=1 & disp16_32 & op_reg_32
+{
+	local addr24:3 = zext(disp16_32:2);
+    local val:2    = *[ram]:2 addr24;
+    local result:2 = op_reg_32 + val;
+    op_reg_32 = result;
+}
+
+# ADDX.W #xx:16, Rd
+:ADDX.W "#"^imm16_32^", "^op_reg_32^"" is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b10100 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    local result:2 = op_reg_32 + imm16_32:2;
+    op_reg_32 = result;
+}
