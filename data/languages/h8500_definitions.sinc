@@ -35,15 +35,14 @@ define register offset=0x24 size=1 [ ccr ];
 define register offset=0x25 size=1 [ dp tp br ];
 
 # ---- Flag bit expressions for convenience ----
-# (bit positions per H8/500 family CCR layout -- confirm against manual if needed)
-@define C_FLAG   "ccr[0,1]"
-@define V_FLAG   "ccr[1,1]"
-@define Z_FLAG   "ccr[2,1]"
-@define N_FLAG   "ccr[3,1]"
-@define H_FLAG   "ccr[4,1]"
-@define I0_FLAG  "ccr[5,1]"
-@define I1_FLAG  "ccr[6,1]"
-@define I2_FLAG  "ccr[7,1]"
+# ---- Correct H8/539F Flag bit expressions ----
+@define C_FLAG "ccr[0,1]"   # Carry
+@define Z_FLAG "ccr[1,1]"   # Zero
+@define N_FLAG "ccr[2,1]"   # Negative
+@define H_FLAG "ccr[4,1]"   # Half-carry
+@define I0_FLAG "ccr[5,1]"  # Interrupt mask bit 0
+@define I1_FLAG "ccr[6,1]"  # Interrupt mask bit 1
+@define I2_FLAG "ccr[7,1]"  # Interrupt mask bit 2
 
 # ---- Tokens (instruction bit-field helpers) ----
 # A conservative common 16-bit instruction token set:
@@ -62,6 +61,19 @@ define token instr16(16)
   imm8      = (0,7)
   disp8     = (0,7)
   imm16     = (0,15)
+;
+
+define token instrdadd(24) 
+	byte1_dadd = (16,23) # EA byte 
+	byte2_dadd = (8,15) # prefix 
+	byte3_dadd = (0,7) # opcode / low bits 
+	ea_dadd = (20,23) 
+	Sz_dadd = (19,19) 
+	ea_reg_dadd = (16,18) 
+	prefix_dadd = (8,15) 
+	op_code_dadd= (3,7) 
+	op_reg_dadd = (0,2) 
+	lo_bit_dadd = (0,7) 
 ;
 
 # 32-bit instruction token: bytes 1..4 mapped MSB->LSB
@@ -89,9 +101,10 @@ define token instr32(32)
 
 # ---- Attach register mapping (so token fields map to register names) ----
 # 3-bit register field r_rrr/r_dst/r_src maps to r0..r7
-attach variables [ ea_reg op_reg ea_reg_32 op_reg_32 ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+attach variables [ ea_reg op_reg ea_reg_32 op_reg_32 ea_reg_dadd op_reg_dadd ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
 
 # ---- Small utility macros ----
+# Return the byte value (low 8 bits) of register `regnum` (0..7) 
 # push/pop 16-bit word using R7 as SP (stack grows down)
 macro push_word(val) {
   r7 = r7 - 2;

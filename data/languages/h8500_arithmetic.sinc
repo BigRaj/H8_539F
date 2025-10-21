@@ -1190,3 +1190,96 @@
     local result:2 = op_reg_32 + imm16_32:2;
     op_reg_32 = result;
 }
+
+# DADD/DSUB ROWs
+
+# DADD.B Rn, Rd  (3-byte: EA + 0x00 prefix + opcode)
+:DADD.B ""^ea_reg_dadd^", "^op_reg_dadd^"" is ea_dadd=0b1010 & Sz_dadd=0 & prefix_dadd=0b00000000 & op_code_dadd=0b10100 & ea_reg_dadd & op_reg_dadd
+{
+    local src:1  = ea_reg_dadd:1;
+    local dst:1  = op_reg_dadd:1;
+    local tmp_low:1;
+    local tmp_high:1;
+    local carry_low:1 = 0;
+    local carry_in:1 = ccr & 0x01;        # Carry flag (bit 0 of CCR)
+
+    tmp_low = (dst & 0x0F) + (src & 0x0F) + carry_in;
+
+    if tmp_low > 9 goto <low_adjust>;
+    goto <low_done>;
+<low_adjust>
+    tmp_low = tmp_low + 6;
+<low_done>
+
+    if tmp_low > 0x0F goto <carry_set>;
+    goto <carry_clear>;
+<carry_set>
+    carry_low = 1;
+<carry_clear>
+
+    tmp_high = ((dst >> 4) & 0x0F) + ((src >> 4) & 0x0F) + carry_low;
+
+    if tmp_high > 9 goto <high_adjust>;
+    goto <high_done>;
+<high_adjust>
+    tmp_high = tmp_high + 6;
+<high_done>
+
+    if tmp_high > 0x0F goto <set_c>;
+    goto <clr_c>;
+<set_c>
+    ccr = (ccr & 0xFE) | 0x01;            # set Carry bit
+    goto <carry_done>;
+<clr_c>
+    ccr = (ccr & 0xFE);                   # clear Carry bit
+<carry_done>
+
+    local result:1 = ((tmp_high << 4) & 0xF0) | (tmp_low & 0x0F);
+    op_reg_dadd = (op_reg_dadd & 0xFF00) | zext(result);
+}
+
+# DSUB.B Rn, Rd  (3-byte: EA + 0x00 prefix + opcode)
+:DSUB.B ""^ea_reg_dadd^", "^op_reg_dadd^"" is ea_dadd=0b1010 & Sz_dadd=0 & prefix_dadd=0b00000000 & op_code_dadd=0b10110 & ea_reg_dadd & op_reg_dadd
+{
+    local src:1  = ea_reg_dadd:1;
+    local dst:1  = op_reg_dadd:1;
+    local tmp_low:1;
+    local tmp_high:1;
+    local borrow_low:1 = 0;
+    local carry_in:1 = ccr & 0x01;        # bit 0 of CCR (carry = invert of borrow)
+
+    tmp_low = (dst & 0x0F) - (src & 0x0F) - (1 - carry_in);
+
+    if tmp_low > 0x0F goto <low_adjust>;
+    goto <low_done>;
+<low_adjust>
+    tmp_low = tmp_low - 6;
+<low_done>
+
+    if tmp_low > 0x0F goto <borrow_set>;
+    goto <borrow_clear>;
+<borrow_set>
+    borrow_low = 1;
+<borrow_clear>
+
+    tmp_high = ((dst >> 4) & 0x0F) - ((src >> 4) & 0x0F) - borrow_low;
+
+    if tmp_high > 0x0F goto <high_adjust>;
+    goto <high_done>;
+<high_adjust>
+    tmp_high = tmp_high - 6;
+<high_done>
+
+    if tmp_high > 0x0F goto <set_c>;
+    goto <clr_c>;
+<set_c>
+    ccr = (ccr & 0xFE);                   # clear Carry bit (borrow occurred)
+    goto <carry_done>;
+<clr_c>
+    ccr = (ccr & 0xFE) | 0x01;            # set Carry bit (no borrow)
+<carry_done>
+
+    local result:1 = ((tmp_high << 4) & 0xF0) | (tmp_low & 0x0F);
+    op_reg_dadd = (op_reg_dadd & 0xFF00) | zext(result);
+}
+

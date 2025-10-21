@@ -145,7 +145,7 @@
 }
 
 # MOV:G.B #xx:8, @(d:8,Rn)
-:MOVG.B "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000110 & Sz=0 & ea_reg & disp8 & imm8
+:MOVG.B "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00000110 & Sz=0 & ea_reg & disp8 & imm8
 {
 	local base24:3 = zext(ea_reg:2);
 	local offset24:3 = sext(disp8:1);
@@ -155,7 +155,7 @@
 } 
 
 # MOV:G.W #xx:8, @(d:8,Rn)
-:MOVG.W "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000110 & Sz=1 & ea_reg & disp8 & imm8
+:MOVG.W "#"^imm8^", @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00000110 & Sz=1 & ea_reg & disp8 & imm8
 {
 	local base24:3 = zext(ea_reg:2);
 	local offset24:3 = sext(disp8:1);
