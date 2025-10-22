@@ -63,6 +63,7 @@ define token instr16(16)
   imm16     = (0,15)
 ;
 
+
 define token instrdadd(24) 
 	byte1_dadd = (16,23) # EA byte 
 	byte2_dadd = (8,15) # prefix 
@@ -102,6 +103,8 @@ define token instr32(32)
 # ---- Attach register mapping (so token fields map to register names) ----
 # 3-bit register field r_rrr/r_dst/r_src maps to r0..r7
 attach variables [ ea_reg op_reg ea_reg_32 op_reg_32 ea_reg_dadd op_reg_dadd ] [ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+#attach names [ rm_imm_08_11 rn_imm_08_11 ] [ r0  r1  r2  r3  r4  r5  r6  r7 ];
 
 # ---- Small utility macros ----
 # Return the byte value (low 8 bits) of register `regnum` (0..7) 

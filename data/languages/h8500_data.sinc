@@ -14,20 +14,20 @@
 #	RN COLUMN
 
 #MOV:G.B Rn -> Rd
-:MOVG.B ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10000 & Sz=0 & ea_reg & op_reg 
+:MOVG.B ea_reg,op_reg is ea=0b1010 & op_code=0b10000 & Sz=0 & ea_reg & op_reg 
 {
   local val:1 = ea_reg:1;
   op_reg = (op_reg & 0xFF00) | zext(val);
 }
 
 #MOV:G.W RN -> Rd
-:MOVG.W ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
+:MOVG.W ea_reg,op_reg is ea=0b1010 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
 {
 	op_reg = ea_reg;
 }
 
 #XCH.W RS -> RD
-:XCH.W ""^ea_reg^", "^op_reg^"" is ea=0b1010 & op_code=0b10010 & Sz=1 & ea_reg & op_reg
+:XCH.W ea_reg,op_reg is ea=0b1010 & op_code=0b10010 & Sz=1 & ea_reg & op_reg
 {
 	local tmp:2 = op_reg;
 	op_reg = ea_reg;
@@ -35,7 +35,7 @@
 }
 
 #SWAP.B_Rd
-:SWAP.B ""^op_reg^"" is ea=0b1010 & op_code=0b00010 & Sz=0 & op_reg 
+:SWAP.B op_reg is ea=0b1010 & op_code=0b00010 & Sz=0 & op_reg 
 {
   local low:2  = op_reg & 0x00FF;       # isolates low byte (bits 0-7)
   local high:2 = (op_reg >> 8) & 0x00FF; # isolates high byte (bits 8-15)
@@ -47,7 +47,7 @@
 # @RN COLUMN
 
 #MOV:G.B @Rn -> Rd
-:MOVG.B "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b10000 & Sz=0 & ea_reg & op_reg
+:MOVG.B @ea_reg,op_reg is ea=0b1101 & op_code=0b10000 & Sz=0 & ea_reg & op_reg
 {
   local addr24:3 = zext(ea_reg);
   local val:1 = *[ram]:1 addr24;
@@ -55,7 +55,7 @@
 }
 
 #MOV:G.W @Rn -> Rd
-:MOVG.W "@"^ea_reg^", "^op_reg^"" is ea=0b1101 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
+:MOVG.W @ea_reg, op_reg is ea=0b1101 & op_code=0b10000 & Sz=1 & ea_reg & op_reg
 {
 	local addr24:3 = zext(ea_reg);
 	op_reg =*[ram]:2 addr24; 
@@ -78,7 +78,7 @@
 }
 
 #MOV:G.B #xx:8, @Rn
-:MOVG.B "#^imm8^, @"^op_reg^"" is ea=0b1101 & lo_bit=0b00000110 & Sz=0 & op_reg & imm8
+:MOVG.B "#"^imm8^"",@op_reg is ea=0b1101 & lo_bit=0b00000110 & Sz=0 & op_reg & imm8
 {
 	local addr24:3 = zext(op_reg:2);
 	local val:1 = imm8;
@@ -86,7 +86,7 @@
 }
 
 #MOV:G.W #xx:8, @Rn
-:MOVG.W "#^imm8^, @"^op_reg^"" is ea=0b1101 & lo_bit=0b00000110 & Sz=1 & op_reg & imm8
+:MOVG.W "#"^imm8^"",@op_reg is ea=0b1101 & lo_bit=0b00000110 & Sz=1 & op_reg & imm8
 {
 	local addr24:3 = zext(op_reg);
   	local val16:2 = zext(imm8:1);

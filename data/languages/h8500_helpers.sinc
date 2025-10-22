@@ -1,0 +1,93 @@
+################################################################
+    # Inline per-constructor helpers: get_reg8/set_reg8/get_reg16/set_reg16
+    # NOTE: paste this block INSIDE the constructor's { ... } action
+    ################################################################
+
+    # temps used by helpers
+    local regnum:1;
+    local tmp8:1;
+    local val8:1;
+    local tmp16:2;
+    local val16:2;
+
+    # --- get low 8 bits of r[regnum] -> tmp8 ---
+  <get_reg8>
+    tmp8 = 0;
+    if (regnum == 0) goto <g0>;
+    if (regnum == 1) goto <g1>;
+    if (regnum == 2) goto <g2>;
+    if (regnum == 3) goto <g3>;
+    if (regnum == 4) goto <g4>;
+    if (regnum == 5) goto <g5>;
+    if (regnum == 6) goto <g6>;
+    goto <g7>;
+  <g0> tmp8 = r0 & 0x00FF; goto <get_reg8_done>;
+  <g1> tmp8 = r1 & 0x00FF; goto <get_reg8_done>;
+  <g2> tmp8 = r2 & 0x00FF; goto <get_reg8_done>;
+  <g3> tmp8 = r3 & 0x00FF; goto <get_reg8_done>;
+  <g4> tmp8 = r4 & 0x00FF; goto <get_reg8_done>;
+  <g5> tmp8 = r5 & 0x00FF; goto <get_reg8_done>;
+  <g6> tmp8 = r6 & 0x00FF; goto <get_reg8_done>;
+  <g7> tmp8 = r7 & 0x00FF; goto <get_reg8_done>;
+  <get_reg8_done>
+
+    # --- set low 8 bits of r[regnum] from val8 ---
+  <set_reg8>
+    if (regnum == 0) goto <s0>;
+    if (regnum == 1) goto <s1>;
+    if (regnum == 2) goto <s2>;
+    if (regnum == 3) goto <s3>;
+    if (regnum == 4) goto <s4>;
+    if (regnum == 5) goto <s5>;
+    if (regnum == 6) goto <s6>;
+    goto <s7>;
+  <s0> r0 = (r0 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s1> r1 = (r1 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s2> r2 = (r2 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s3> r3 = (r3 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s4> r4 = (r4 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s5> r5 = (r5 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s6> r6 = (r6 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <s7> r7 = (r7 & 0xFF00) | zext(val8); goto <set_reg8_done>;
+  <set_reg8_done>
+
+    # --- get 16-bit full word r[regnum] -> tmp16 ---
+  <get_reg16>
+    tmp16 = 0;
+    if (regnum == 0) goto <w0>;
+    if (regnum == 1) goto <w1>;
+    if (regnum == 2) goto <w2>;
+    if (regnum == 3) goto <w3>;
+    if (regnum == 4) goto <w4>;
+    if (regnum == 5) goto <w5>;
+    if (regnum == 6) goto <w6>;
+    goto <w7>;
+  <w0> tmp16 = r0; goto <get_reg16_done>;
+  <w1> tmp16 = r1; goto <get_reg16_done>;
+  <w2> tmp16 = r2; goto <get_reg16_done>;
+  <w3> tmp16 = r3; goto <get_reg16_done>;
+  <w4> tmp16 = r4; goto <get_reg16_done>;
+  <w5> tmp16 = r5; goto <get_reg16_done>;
+  <w6> tmp16 = r6; goto <get_reg16_done>;
+  <w7> tmp16 = r7; goto <get_reg16_done>;
+  <get_reg16_done>
+
+    # --- set 16-bit full word r[regnum] from val16 ---
+  <set_reg16>
+    if (regnum == 0) goto <t0>;
+    if (regnum == 1) goto <t1>;
+    if (regnum == 2) goto <t2>;
+    if (regnum == 3) goto <t3>;
+    if (regnum == 4) goto <t4>;
+    if (regnum == 5) goto <t5>;
+    if (regnum == 6) goto <t6>;
+    goto <t7>;
+  <t0> r0 = val16; goto <set_reg16_done>;
+  <t1> r1 = val16; goto <set_reg16_done>;
+  <t2> r2 = val16; goto <set_reg16_done>;
+  <t3> r3 = val16; goto <set_reg16_done>;
+  <t4> r4 = val16; goto <set_reg16_done>;
+  <t5> r5 = val16; goto <set_reg16_done>;
+  <t6> r6 = val16; goto <set_reg16_done>;
+  <t7> r7 = val16; goto <set_reg16_done>;
+  <set_reg16_done>

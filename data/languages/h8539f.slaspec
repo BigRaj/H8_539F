@@ -1,8 +1,9 @@
 @define H8_VERSION "1"
 
 @include "h8500_definitions.sinc"
+#@include "h8500_helpers.sinc"
 @include "h8500_data.sinc"
 @include "h8500_arithmetic.sinc"
 
 
-@include "h8500_unverified.sinc"
+#@include "h8500_unverified.sinc"
