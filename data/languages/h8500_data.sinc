@@ -16,8 +16,7 @@
 #MOV:G.B Rn -> Rd
 :MOVG.B ea_reg,op_reg is ea=0b1010 & op_code=0b10000 & Sz=0 & ea_reg & op_reg 
 {
-  local val:1 = ea_reg:1;
-  op_reg = (op_reg & 0xFF00) | zext(val);
+  op_reg = (op_reg & 0xFF00) | zext(ea_reg:1);
 }
 
 #MOV:G.W RN -> Rd

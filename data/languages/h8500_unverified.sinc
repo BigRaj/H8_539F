@@ -1,12 +1,9 @@
 # SUB.B <EAs>, Rd row
 
 # SUB.B Rn, Rd
-:SUB.B ""^ea_reg^", "^op_reg^"" 
-  is ea=0b1010 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
+:SUB.B ea_reg,op_reg is ea=0b1010 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
 {
-    local val8:1    = ea_reg:1;
-    local result8:1 = op_reg:1 - val8;
-    op_reg = (op_reg & 0xFF00) | zext(result8);
+    op_reg = (op_reg & 0xFF00) | zext((op_reg - ea_reg));
 }
 
 # SUB.B @Rn, Rd

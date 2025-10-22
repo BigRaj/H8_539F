@@ -1261,3 +1261,12 @@
     local result:1 = ((tmp_high << 4) & 0xF0) | (tmp_low & 0x0F);
     op_reg_dadd = (op_reg_dadd & 0xFF00) | zext(result);
 }
+
+
+# SUB.B <EAs>, Rd row
+
+# SUB.B Rn, Rd
+:SUB.B ea_reg,op_reg is ea=0b1010 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
+{
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - ea_reg:1));
+}
