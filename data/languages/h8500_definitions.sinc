@@ -64,16 +64,16 @@ define token instr16(16)
 ;
 
 
-define token instrdadd(24) 
+define token instrdec(24) 
 	byte1_dadd = (16,23) # EA byte 
 	byte2_dadd = (8,15) # prefix 
 	byte3_dadd = (0,7) # opcode / low bits 
 	ea_dadd = (20,23) 
 	Sz_dadd = (19,19) 
-	ea_reg_dadd = (16,18) 
+	ea_reg_dadd = (16,18) dec 
 	prefix_dadd = (8,15) 
 	op_code_dadd= (3,7) 
-	op_reg_dadd = (0,2) 
+	op_reg_dadd = (0,2) dec 
 	lo_bit_dadd = (0,7) 
 ;
 

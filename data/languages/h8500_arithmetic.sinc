@@ -1173,93 +1173,84 @@
 # DADD/DSUB ROWs
 
 # DADD.B Rn, Rd  (3-byte: EA + 0x00 prefix + opcode)
-:DADD.B ""^ea_reg_dadd^", "^op_reg_dadd^"" is ea_dadd=0b1010 & Sz_dadd=0 & prefix_dadd=0b00000000 & op_code_dadd=0b10100 & ea_reg_dadd & op_reg_dadd
+:DADD.B ea_reg_dadd,op_reg_dadd
+  is ea_dadd=0b1010 & Sz_dadd=0 & prefix_dadd=0b00000000 &
+     op_code_dadd=0b10100 & ea_reg_dadd & op_reg_dadd
 {
-    local src:1  = ea_reg_dadd:1;
-    local dst:1  = op_reg_dadd:1;
-    local tmp_low:1;
-    local tmp_high:1;
+    local src:1 = ea_reg_dadd:1;
+    local dst:1 = op_reg_dadd:1;
+
+    # --- Low nibble add ---
+    local low_sum:1  = (dst & 0x0F) + (src & 0x0F) + $(C_FLAG);
     local carry_low:1 = 0;
-    local carry_in:1 = ccr & 0x01;        # Carry flag (bit 0 of CCR)
+    if low_sum > 9 goto <no_low_adjust>;
+        low_sum = low_sum + 6;
+        carry_low = 1;
+<no_low_adjust>
 
-    tmp_low = (dst & 0x0F) + (src & 0x0F) + carry_in;
+    # --- High nibble add ---
+    local high_sum:1 = ((dst >> 4) & 0x0F) + ((src >> 4) & 0x0F) + carry_low;
+    if high_sum > 9 goto <no_high_adjust>;
+        high_sum = high_sum + 6;
+<no_high_adjust>
 
-    if tmp_low > 9 goto <low_adjust>;
-    goto <low_done>;
-<low_adjust>
-    tmp_low = tmp_low + 6;
-<low_done>
+    # --- Combine nibbles into final 8-bit result ---
+    local result:1 = ((high_sum << 4) & 0xF0) | (low_sum & 0x0F);
 
-    if tmp_low > 0x0F goto <carry_set>;
-    goto <carry_clear>;
-<carry_set>
-    carry_low = 1;
-<carry_clear>
+    # --- Safely write low byte back into Rd ---
+    local tmp16:2 = op_reg_dadd;
+    tmp16 = (tmp16 & 0xFF00) | zext(result);
+    op_reg_dadd = tmp16;
 
-    tmp_high = ((dst >> 4) & 0x0F) + ((src >> 4) & 0x0F) + carry_low;
-
-    if tmp_high > 9 goto <high_adjust>;
-    goto <high_done>;
-<high_adjust>
-    tmp_high = tmp_high + 6;
-<high_done>
-
-    if tmp_high > 0x0F goto <set_c>;
-    goto <clr_c>;
-<set_c>
-    ccr = (ccr & 0xFE) | 0x01;            # set Carry bit
-    goto <carry_done>;
-<clr_c>
-    ccr = (ccr & 0xFE);                   # clear Carry bit
+    # --- Update carry flag ---
+    if high_sum > 15 goto <carry_on>;
+        $(C_FLAG) = 0;
+        goto <carry_done>;
+<carry_on>
+    $(C_FLAG) = 1;
 <carry_done>
-
-    local result:1 = ((tmp_high << 4) & 0xF0) | (tmp_low & 0x0F);
-    op_reg_dadd = (op_reg_dadd & 0xFF00) | zext(result);
 }
 
 # DSUB.B Rn, Rd  (3-byte: EA + 0x00 prefix + opcode)
-:DSUB.B ""^ea_reg_dadd^", "^op_reg_dadd^"" is ea_dadd=0b1010 & Sz_dadd=0 & prefix_dadd=0b00000000 & op_code_dadd=0b10110 & ea_reg_dadd & op_reg_dadd
+:DSUB.B ea_reg_dadd,op_reg_dadd
+  is ea_dadd=0b1010 & Sz_dadd=0 & prefix_dadd=0b00000000 &
+     op_code_dadd=0b10110 & ea_reg_dadd & op_reg_dadd
 {
-    local src:1  = ea_reg_dadd:1;
-    local dst:1  = op_reg_dadd:1;
-    local tmp_low:1;
-    local tmp_high:1;
+    local src:1 = ea_reg_dadd:1;
+    local dst:1 = op_reg_dadd:1;
+
+    # --- Low nibble subtraction (in BCD) ---
+    local low_diff:2 = zext((dst & 0x0F)) - zext((src & 0x0F)) - zext($(C_FLAG));
     local borrow_low:1 = 0;
-    local carry_in:1 = ccr & 0x01;        # bit 0 of CCR (carry = invert of borrow)
+    if low_diff > 0x0F goto <low_ok>;
+        low_diff = low_diff - 6;
+        borrow_low = 1;
+<low_ok>
 
-    tmp_low = (dst & 0x0F) - (src & 0x0F) - (1 - carry_in);
+    # --- High nibble subtraction ---
+    local high_diff:2 = zext((dst >> 4) & 0x0F) - zext((src >> 4) & 0x0F) - zext(borrow_low);
+    local borrow_high:1 = 0;
+    if high_diff > 0x0F goto <high_ok>;
+        high_diff = high_diff - 6;
+        borrow_high = 1;
+<high_ok>
 
-    if tmp_low > 0x0F goto <low_adjust>;
-    goto <low_done>;
-<low_adjust>
-    tmp_low = tmp_low - 6;
-<low_done>
+    # --- Combine nibbles into final result ---
+    local tmp8:2   = ((high_diff & 0x0F) << 4) | (low_diff & 0x0F);  # 2-byte intermediate
+	local result:1 = tmp8:1;
 
-    if tmp_low > 0x0F goto <borrow_set>;
-    goto <borrow_clear>;
-<borrow_set>
-    borrow_low = 1;
-<borrow_clear>
+    # --- Write back to Rd (low byte only) ---
+    local tmp16:2 = op_reg_dadd;
+    tmp16 = (tmp16 & 0xFF00) | zext(result);
+    op_reg_dadd = tmp16;
 
-    tmp_high = ((dst >> 4) & 0x0F) - ((src >> 4) & 0x0F) - borrow_low;
-
-    if tmp_high > 0x0F goto <high_adjust>;
-    goto <high_done>;
-<high_adjust>
-    tmp_high = tmp_high - 6;
-<high_done>
-
-    if tmp_high > 0x0F goto <set_c>;
-    goto <clr_c>;
-<set_c>
-    ccr = (ccr & 0xFE);                   # clear Carry bit (borrow occurred)
-    goto <carry_done>;
-<clr_c>
-    ccr = (ccr & 0xFE) | 0x01;            # set Carry bit (no borrow)
-<carry_done>
-
-    local result:1 = ((tmp_high << 4) & 0xF0) | (tmp_low & 0x0F);
-    op_reg_dadd = (op_reg_dadd & 0xFF00) | zext(result);
+    # --- Update carry flag (C = inverted borrow) ---
+    if borrow_high != 0 goto <borrowed>;
+        $(C_FLAG) = 1;
+        goto <done>;
+<borrowed>
+    $(C_FLAG) = 0;
+<done>
 }
 
 
@@ -1269,4 +1260,70 @@
 :SUB.B ea_reg,op_reg is ea=0b1010 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
 {
     op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - ea_reg:1));
+}
+
+# TODO: Verify Below this line
+
+# SUB.B @Rn, Rd
+:SUB.B @ea_reg,op_reg is ea=0b1101 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:1   = *[ram]:1 addr;     # fetch byte Rd
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 - val);
+}
+
+# SUB.B @(d:8,Rn), Rd
+:SUB.B @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b00110 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:1     = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 - val);
+}
+
+# SUB.B @(d:16,Rn), Rd
+:SUB.B @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b00110 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3 = zext(ea_reg_32) + sext(disp16_32:2);
+	local val:1 = *[ram]:1 addr;
+	op_reg_32 = (op_reg_32 & 0xFF00) | zext((op_reg_32:1 - val));
+}
+
+# SUB.B @-Rn, Rd
+:SUB.B @-ea_reg,op_reg is ea=0b1011 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
+{
+	ea_reg = ea_reg - 1;				# pre-decrement (byte)
+    local addr:3  = zext(ea_reg);         
+    local val:1    = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - val));
+}
+
+# SUB.B @Rn+, Rd
+:SUB.B @ea_reg+,op_reg is ea=0b1100 & op_code=0b00110 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);        # use original Rn
+    local val:1    = *[ram]:1 addr24;
+    ea_reg = ea_reg + 1;
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - val));
+}
+
+# SUB.B @aa:8, Rd
+:SUB.B @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b00110 & Sz=0 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 - val);
+}
+
+# SUB.B @aa:16, Rd
+:SUB.B "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00110 & Sz_32=0 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(op_reg_32:1 - val);
+}
+
+# SUB.B #xx:8, Rd
+:SUB.B "#"^imm8^", "^op_reg^"" is ea=0b0000 & ea_reg=0b100 & op_code=0b00110 & Sz=0 & imm8 & op_reg
+{
+	op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - imm8:1));
 }
