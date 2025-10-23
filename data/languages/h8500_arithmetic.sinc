@@ -1327,3 +1327,77 @@
 {
 	op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - imm8:1));
 }
+
+
+#TODO: Verify this
+# SUB.W Row
+
+# SUB.W Rn, Rd
+:SUB.W ea_reg,op_reg is ea=0b1010 & op_code=0b00110 & Sz=1 & ea_reg & op_reg
+{
+    op_reg = op_reg - ea_reg;
+}
+
+# SUB.W @Rn, Rd
+:SUB.W @ea_reg,op_reg is ea=0b1101 & op_code=0b00110 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:2   = *[ram]:2 addr;     # fetch byte
+    op_reg = op_reg - val;
+}
+
+# SUB.W @(d:8,Rn), Rd
+:SUB.W "@("^disp8^","^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b00110 & Sz=1 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:2     = *[ram]:2 addr;
+    op_reg = op_reg - val;
+}
+
+# SUB.W @(d:16,Rn), Rd
+:SUB.W "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b00110 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3   = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:2     = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 - val;
+}
+
+# SUB.W @-Rn, Rd
+:SUB.W @-ea_reg,op_reg is ea=0b1011 & op_code=0b00110 & Sz=1 & ea_reg & op_reg
+{
+    ea_reg = ea_reg - 2;         # pre-decrement (word)
+    local addr:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg - val;
+}
+
+# SUB.W @Rn+, Rd
+:SUB.W @ea_reg+,op_reg is ea=0b1100 & op_code=0b00110 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3  = zext(ea_reg);        # use original Rn
+    local val:2    = *[ram]:2 addr;
+    ea_reg = ea_reg - 2;           # post-decrement (word)
+    op_reg = op_reg - val;
+}
+
+# SUB.W @aa:8, Rd
+:SUB.W @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b00110 & Sz=1 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg - val;
+}
+
+# SUB.W @aa:16, Rd
+:SUB.W @(disp16_32),op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00110 & Sz_32=1 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 - val;
+}
+
+# SUB.W #xx:16, Rd
+:SUB.W "#"imm16_32,op_reg_32 is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b00110 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    op_reg_32 = op_reg_32 - imm16_32:2;
+}
