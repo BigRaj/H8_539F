@@ -164,7 +164,7 @@
 } 
 
 # MOV:G.W #xx:16, @(d:8,Rn)
-:MOVG.W "#"^imm16^", @("^disp8^","^ea_reg^")" is ea=0b1110 & op_code=0b00000111 & Sz=1 & ea_reg & disp8 & imm16
+:MOVG.W "#"^imm16^", @("^disp8^","^ea_reg^")" is ea=0b1110 & lo_bit=0b00000111 & Sz=1 & ea_reg & disp8 & imm16
 {
 	local base24:3   = zext(ea_reg:2);   # base register Rn (16-bit)
 	local offset24:3 = sext(disp8:1);    # signed 8-bit displacement

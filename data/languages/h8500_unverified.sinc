@@ -1,3 +1,149 @@
+# DIVXU.B/W
 
-# SUB.W <EAs>, Rd row
+# DIVXU.B <EAs>, Rd row
 
+# DIVXU.B Rn, Rd
+:DIVXU.B ea_reg,op_reg is ea=0b1010 & op_code=0b10111 & Sz=0 & ea_reg & op_reg
+{
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 * ea_reg:1));
+}
+
+# TODO: Verify Below this line
+
+# DIVXU.B @Rn, Rd
+:DIVXU.B @ea_reg,op_reg is ea=0b1101 & op_code=0b10111 & Sz=0 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:1   = *[ram]:1 addr;     # fetch byte Rd
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 * val);
+}
+
+# DIVXU.B @(d:8,Rn), Rd
+:DIVXU.B @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b10111 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:1     = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 * val);
+}
+
+# DIVXU.B @(d:16,Rn), Rd
+:DIVXU.B @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b10111 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3 = zext(ea_reg_32) + sext(disp16_32:2);
+	local val:1 = *[ram]:1 addr;
+	op_reg_32 = (op_reg_32 & 0xFF00) | zext((op_reg_32:1 * val));
+}
+
+# DIVXU.B @-Rn, Rd
+:DIVXU.B @-ea_reg,op_reg is ea=0b1011 & op_code=0b10111 & Sz=0 & ea_reg & op_reg
+{
+	ea_reg = ea_reg - 1;				# pre-decrement (byte)
+    local addr:3  = zext(ea_reg);         
+    local val:1    = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 * val));
+}
+
+# DIVXU.B @Rn+, Rd
+:DIVXU.B @ea_reg+,op_reg is ea=0b1100 & op_code=0b10111 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);        # use original Rn
+    local val:1    = *[ram]:1 addr24;
+    ea_reg = ea_reg + 1;
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 * val));
+}
+
+# DIVXU.B @aa:8, Rd
+:DIVXU.B @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b10111 & Sz=0 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 * val);
+}
+
+# DIVXU.B @aa:16, Rd
+:DIVXU.B @^disp16_32), op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10111 & Sz_32=0 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(op_reg_32:1 * val);
+}
+
+# DIVXU.B #xx:8, Rd
+:DIVXU.B "#"imm8,op_reg is ea=0b0000 & ea_reg=0b100 & op_code=0b10111 & Sz=0 & imm8 & op_reg
+{
+	op_reg = (op_reg & 0xFF00) | zext((op_reg:1 * imm8:1));
+}
+
+
+#TODO: Verify this
+# DIVXU.W Row
+
+# DIVXU.W Rn, Rd
+:DIVXU.W ea_reg,op_reg is ea=0b1010 & op_code=0b10111 & Sz=1 & ea_reg & op_reg
+{
+    op_reg = op_reg * ea_reg;
+}
+
+# DIVXU.W @Rn, Rd
+:DIVXU.W @ea_reg,op_reg is ea=0b1101 & op_code=0b10111 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:2   = *[ram]:2 addr;     # fetch byte
+    op_reg = op_reg * val;
+}
+
+# DIVXU.W @(d:8,Rn), Rd
+:DIVXU.W @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b10111 & Sz=1 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:2     = *[ram]:2 addr;
+    op_reg = op_reg * val;
+}
+
+# DIVXU.W @(d:16,Rn), Rd
+:DIVXU.W @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b10111 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3   = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:2     = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 * val;
+}
+
+# DIVXU.W @-Rn, Rd
+:DIVXU.W @-ea_reg,op_reg is ea=0b1011 & op_code=0b10111 & Sz=1 & ea_reg & op_reg
+{
+    ea_reg = ea_reg - 2;         # pre-decrement (word)
+    local addr:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg * val;
+}
+
+# DIVXU.W @Rn+, Rd
+:DIVXU.W @ea_reg+,op_reg is ea=0b1100 & op_code=0b10111 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3  = zext(ea_reg);        # use original Rn
+    local val:2    = *[ram]:2 addr;
+    ea_reg = ea_reg + 2;           # post-increment (word)
+    op_reg = op_reg * val;
+}
+
+# DIVXU.W @aa:8, Rd
+:DIVXU.W @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b10111 & Sz=1 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg * val;
+}
+
+# DIVXU.W @aa:16, Rd
+:DIVXU.W @(disp16_32),op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10111 & Sz_32=1 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 * val;
+}
+
+# DIVXU.W #xx:16, Rd
+:DIVXU.W "#"imm16_32,op_reg_32 is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b10111 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    op_reg_32 = op_reg_32 * imm16_32:2;
+}

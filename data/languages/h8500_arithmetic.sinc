@@ -164,7 +164,7 @@
 #Add:Q.B #1 row
 
 # ADD:Q.B #1, Rn
-:ADDQ.B "#1, "^ea_reg^"" is ea=0b1010 & lo_bit=0b00001000 & Sz=0 & ea_reg
+:ADDQ.B "#"1,ea_reg is ea=0b1010 & lo_bit=0b00001000 & Sz=0 & ea_reg
 {
     local result8:1 = ea_reg:1 + 1;
     ea_reg = (ea_reg & 0xFF00) | zext(result8);
@@ -1315,7 +1315,7 @@
 }
 
 # SUB.B @aa:16, Rd
-:SUB.B "@("^disp16_32^"), "^op_reg_32^"" is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00110 & Sz_32=0 & disp16_32 & op_reg_32
+:SUB.B @(disp16_32), op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00110 & Sz_32=0 & disp16_32 & op_reg_32
 {
     local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
     local val:1    = *[ram]:1 addr;
@@ -1323,7 +1323,7 @@
 }
 
 # SUB.B #xx:8, Rd
-:SUB.B "#"^imm8^", "^op_reg^"" is ea=0b0000 & ea_reg=0b100 & op_code=0b00110 & Sz=0 & imm8 & op_reg
+:SUB.B "#"imm8,op_reg is ea=0b0000 & ea_reg=0b100 & op_code=0b00110 & Sz=0 & imm8 & op_reg
 {
 	op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - imm8:1));
 }
@@ -1347,7 +1347,7 @@
 }
 
 # SUB.W @(d:8,Rn), Rd
-:SUB.W "@("^disp8^","^ea_reg^"), "^op_reg^"" is ea=0b1110 & op_code=0b00110 & Sz=1 & ea_reg & disp8 & op_reg
+:SUB.W @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b00110 & Sz=1 & ea_reg & disp8 & op_reg
 {
     local addr:3   = zext(ea_reg) + sext(disp8:1);
     local val:2     = *[ram]:2 addr;
@@ -1355,7 +1355,7 @@
 }
 
 # SUB.W @(d:16,Rn), Rd
-:SUB.W "@("^disp16_32^","^ea_reg_32^"), "^op_reg_32^"" is ea_32=0b1111 & op_code_32=0b00110 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+:SUB.W @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b00110 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
 {
     local addr:3   = zext(ea_reg_32) + sext(disp16_32:2);
     local val:2     = *[ram]:2 addr;
@@ -1376,7 +1376,7 @@
 {
     local addr:3  = zext(ea_reg);        # use original Rn
     local val:2    = *[ram]:2 addr;
-    ea_reg = ea_reg - 2;           # post-decrement (word)
+    ea_reg = ea_reg + 2;           # post-increment (word)
     op_reg = op_reg - val;
 }
 
@@ -1400,4 +1400,500 @@
 :SUB.W "#"imm16_32,op_reg_32 is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b00110 & Sz_32=1 & imm16_32 & op_reg_32
 {
     op_reg_32 = op_reg_32 - imm16_32:2;
+}
+
+# SUBS.B <EAs>, Rd row
+
+# SUBS.B Rn, Rd
+:SUBS.B ea_reg,op_reg is ea=0b1010 & op_code=0b00111 & Sz=0 & ea_reg & op_reg
+{
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - ea_reg:1));
+}
+
+# TODO: Verify Below this line
+
+# SUBS.B @Rn, Rd
+:SUBS.B @ea_reg,op_reg is ea=0b1101 & op_code=0b00111 & Sz=0 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:1   = *[ram]:1 addr;     # fetch byte Rd
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 - val);
+}
+
+# SUBS.B @(d:8,Rn), Rd
+:SUBS.B @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b00111 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:1     = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 - val);
+}
+
+# SUBS.B @(d:16,Rn), Rd
+:SUBS.B @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b00111 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3 = zext(ea_reg_32) + sext(disp16_32:2);
+	local val:1 = *[ram]:1 addr;
+	op_reg_32 = (op_reg_32 & 0xFF00) | zext((op_reg_32:1 - val));
+}
+
+# SUBS.B @-Rn, Rd
+:SUBS.B @-ea_reg,op_reg is ea=0b1011 & op_code=0b00111 & Sz=0 & ea_reg & op_reg
+{
+	ea_reg = ea_reg - 1;				# pre-decrement (byte)
+    local addr:3  = zext(ea_reg);         
+    local val:1    = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - val));
+}
+
+# SUBS.B @Rn+, Rd
+:SUBS.B @ea_reg+,op_reg is ea=0b1100 & op_code=0b00111 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);        # use original Rn
+    local val:1    = *[ram]:1 addr24;
+    ea_reg = ea_reg + 1;
+    op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - val));
+}
+
+# SUBS.B @aa:8, Rd
+:SUBS.B @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b00111 & Sz=0 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg = (op_reg & 0xFF00) | zext(op_reg:1 - val);
+}
+
+# SUBS.B @aa:16, Rd
+:SUBS.B @(disp16_32), op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00111 & Sz_32=0 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(op_reg_32:1 - val);
+}
+
+# SUBS.B #xx:8, Rd
+:SUBS.B "#"imm8,op_reg is ea=0b0000 & ea_reg=0b100 & op_code=0b00111 & Sz=0 & imm8 & op_reg
+{
+	op_reg = (op_reg & 0xFF00) | zext((op_reg:1 - imm8:1));
+}
+
+
+# SUBS.W Row
+
+# SUBS.W Rn, Rd
+:SUBS.W ea_reg,op_reg is ea=0b1010 & op_code=0b00111 & Sz=1 & ea_reg & op_reg
+{
+    op_reg = op_reg - ea_reg;
+}
+
+# SUBS.W @Rn, Rd
+:SUBS.W @ea_reg,op_reg is ea=0b1101 & op_code=0b00111 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:2   = *[ram]:2 addr;     # fetch byte
+    op_reg = op_reg - val;
+}
+
+# SUBS.W @(d:8,Rn), Rd
+:SUBS.W @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b00111 & Sz=1 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:2     = *[ram]:2 addr;
+    op_reg = op_reg - val;
+}
+
+# SUBS.W @(d:16,Rn), Rd
+:SUBS.W @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b00111 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3   = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:2     = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 - val;
+}
+
+# SUBS.W @-Rn, Rd
+:SUBS.W @-ea_reg,op_reg is ea=0b1011 & op_code=0b00111 & Sz=1 & ea_reg & op_reg
+{
+    ea_reg = ea_reg - 2;         # pre-decrement (word)
+    local addr:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg - val;
+}
+
+# SUBS.W @Rn+, Rd
+:SUBS.W @ea_reg+,op_reg is ea=0b1100 & op_code=0b00111 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3  = zext(ea_reg);        # use original Rn
+    local val:2    = *[ram]:2 addr;
+    ea_reg = ea_reg + 2;           # post-increment (word)
+    op_reg = op_reg - val;
+}
+
+# SUBS.W @aa:8, Rd
+:SUBS.W @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b00111 & Sz=1 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg - val;
+}
+
+# SUBS.W @aa:16, Rd
+:SUBS.W @(disp16_32),op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b00111 & Sz_32=1 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 - val;
+}
+
+# SUBS.W #xx:16, Rd
+:SUBS.W "#"imm16_32,op_reg_32 is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b00111 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    op_reg_32 = op_reg_32 - imm16_32:2;
+}
+
+
+#SUBX.B Row
+
+# SUBX.B Rn, Rd
+:SUBX.B ea_reg,op_reg is ea=0b1010 & op_code=0b10110 & Sz=0 & ea_reg & op_reg
+{
+	local result:1 = op_reg:1 - ea_reg:1 - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @Rn, Rd
+:SUBX.B @ea_reg,op_reg is ea=0b1101 & op_code=0b10110 & Sz=0 & ea_reg & op_reg
+{
+    local addr:3  = zext(ea_reg);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg:1 - val - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @(d:8,Rn), Rd
+:SUBX.B @(disp8,ea_reg), op_reg is ea=0b1110 & op_code=0b10110 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local addr:3  = zext(ea_reg) + sext(disp8:1);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg:1 - val - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @(d:16,Rn), Rd
+:SUBX.B @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b10110 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg_32:1 - val - $(C_FLAG);
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @-Rn, Rd
+:SUBX.B @-ea_reg,op_reg is ea=0b1011 & op_code=0b10110 & Sz=0 & ea_reg & op_reg
+{
+    ea_reg = ea_reg - 1;
+    local addr:3 = zext(ea_reg);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg:1 - val - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @Rn+, Rd
+:SUBX.B @ea_reg+,op_reg is ea=0b1100 & op_code=0b10110 & Sz=0 & ea_reg & op_reg
+{
+	local addr:3 = zext(ea_reg);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg:1 - val - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    ea_reg = ea_reg + 1;
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @aa:8, Rd
+:SUBX.B @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b10110 & Sz=0 & disp8 & op_reg
+{
+	local addr:3 = 0xFF00 | zext(disp8:1);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg:1 - val - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B @aa:16, Rd
+:SUBX.B @(disp16_32),op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10110 & Sz_32=0 & disp16_32 & op_reg_32
+{
+	local addr:3 = zext(disp16_32:2);
+    local val:1     = *[ram]:1 addr;
+    local result:1  = op_reg_32:1 - val - $(C_FLAG);
+    op_reg_32 = (op_reg_32 & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+# SUBX.B #xx:8, Rd
+:SUBX.B "#"imm8,op_reg is ea=0b0000 & ea_reg=0b100 & op_code=0b10110 & Sz=0 & imm8 & op_reg
+{
+    local result:1 = op_reg:1 - imm8:1 - $(C_FLAG);
+    op_reg = (op_reg & 0xFF00) | zext(result);
+    
+    $(C_FLAG) = (result < 0x100);
+}
+
+
+# SUBX.W Row
+
+# SUBX.W Rn, Rd
+:SUBX.W ea_reg,op_reg is ea=0b1010 & op_code=0b10110 & Sz=1 & ea_reg & op_reg
+{
+    local val:2 = ea_reg;
+    local result:2 = op_reg - val - zext($(C_FLAG));
+    op_reg = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @Rn, Rd
+:SUBX.W @ea_reg,op_reg is ea=0b1101 & op_code=0b10110 & Sz=1 & ea_reg & op_reg
+{
+	local addr:3 = zext(ea_reg);
+    local val:2    = *[ram]:2 addr;
+    local result:2 = op_reg - val - zext($(C_FLAG));
+    op_reg = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @(d:8,Rn), Rd
+:SUBX.W @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b10110 & Sz=1 & ea_reg & disp8 & op_reg
+{
+	local addr:3 = zext(ea_reg) + sext(disp8:1);
+    local val:2    = *[ram]:2 addr;
+    local result:2 = op_reg - val - zext($(C_FLAG));
+    op_reg = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @(d:16,Rn), Rd
+:SUBX.W @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b10110 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+	local addr:3 = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:2    = *[ram]:2 addr;
+    local result:2 = op_reg_32 - val - zext($(C_FLAG));
+    op_reg_32 = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @-Rn, Rd
+:SUBX.W @-ea_reg,op_reg is ea=0b1011 & op_code=0b10110 & Sz=1 & ea_reg & op_reg
+{
+    ea_reg = ea_reg - 2;
+    local addr:3 = zext(ea_reg);
+    local val:2     = *[ram]:2 addr;
+    local result:2  = op_reg - val - zext($(C_FLAG));
+    op_reg = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @Rn+, Rd
+:SUBX.W @ea_reg+,op_reg is ea=0b1100 & op_code=0b10110 & Sz=1 & ea_reg & op_reg
+{
+	local addr:3 = zext(ea_reg);
+    local val:2     = *[ram]:2 addr;
+    local result:2  = op_reg - val - zext($(C_FLAG));
+    op_reg = result;
+    ea_reg = ea_reg + 2;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @aa:8, Rd
+:SUBX.W @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b10110 & Sz=1 & disp8 & op_reg
+{
+	local addr:3 = 0xFF00 | zext(disp8:1);
+    local val:2    = *[ram]:2 addr;
+    local result:2 = op_reg - val - zext($(C_FLAG));
+    op_reg = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W @aa:16, Rd
+:SUBX.W @(disp16_32),op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10110 & Sz_32=1 & disp16_32 & op_reg_32
+{
+	local addr:3 = zext(disp16_32:2);
+    local val:2    = *[ram]:2 addr;
+    local result:2 = op_reg_32 - val - zext($(C_FLAG));
+    op_reg_32 = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+# SUBX.W #xx:16, Rd
+:SUBX.W "#"imm16_32,op_reg_32 is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b10110 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    local result:2 = op_reg_32 - imm16_32 - zext($(C_FLAG));
+    op_reg_32 = result;
+    
+    $(C_FLAG) = (result < 0x10000);
+}
+
+
+# MULXU.B <EAs>, Rd row
+
+# MULXU.B Rn, Rd
+:MULXU.B ea_reg,op_reg is ea=0b1010 & op_code=0b10101 & Sz=0 & ea_reg & op_reg
+{
+    op_reg = zext(op_reg:1) * zext(ea_reg:1);
+}
+
+# TODO: Verify Below this line
+
+# MULXU.B @Rn, Rd
+:MULXU.B @ea_reg,op_reg is ea=0b1101 & op_code=0b10101 & Sz=0 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:1   = *[ram]:1 addr;     # fetch byte Rd
+    op_reg =  zext(op_reg:1) * zext(val);
+}
+
+# MULXU.B @(d:8,Rn), Rd
+:MULXU.B @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b10101 & Sz=0 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:1     = *[ram]:1 addr;
+    op_reg =  zext(op_reg:1) * zext(val);
+}
+
+# MULXU.B @(d:16,Rn), Rd
+:MULXU.B @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b10101 & Sz_32=0 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3 = zext(ea_reg_32) + sext(disp16_32:2);
+	local val:1 = *[ram]:1 addr;
+	op_reg_32 = zext(op_reg_32:1) * zext(val);
+}
+
+# MULXU.B @-Rn, Rd
+:MULXU.B @-ea_reg,op_reg is ea=0b1011 & op_code=0b10101 & Sz=0 & ea_reg & op_reg
+{
+	ea_reg = ea_reg - 1;				# pre-decrement (byte)
+    local addr:3  = zext(ea_reg);         
+    local val:1    = *[ram]:1 addr;
+    op_reg =  zext(op_reg:1) * zext(val);
+}
+
+# MULXU.B @Rn+, Rd
+:MULXU.B @ea_reg+,op_reg is ea=0b1100 & op_code=0b10101 & Sz=0 & ea_reg & op_reg
+{
+    local addr24:3  = zext(ea_reg);        # use original Rn
+    local val:1    = *[ram]:1 addr24;
+    ea_reg = ea_reg + 1;
+    op_reg =  zext(op_reg:1) * zext(val);
+}
+
+# MULXU.B @aa:8, Rd
+:MULXU.B @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b10101 & Sz=0 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg =  zext(op_reg:1) * zext(val);
+}
+
+# MULXU.B @aa:16, Rd
+:MULXU.B @(disp16_32), op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10101 & Sz_32=0 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:1    = *[ram]:1 addr;
+    op_reg_32 = zext(op_reg_32:1) * zext(val);
+}
+
+# MULXU.B #xx:8, Rd
+:MULXU.B "#"imm8,op_reg is ea=0b0000 & ea_reg=0b100 & op_code=0b10101 & Sz=0 & imm8 & op_reg
+{
+	op_reg = zext(op_reg:1) * zext(imm8:1);
+}
+
+
+#TODO: Verify this
+# MULXU.W Row
+
+# MULXU.W Rn, Rd
+:MULXU.W ea_reg,op_reg is ea=0b1010 & op_code=0b10101 & Sz=1 & ea_reg & op_reg
+{
+    op_reg = op_reg * ea_reg;
+}
+
+# MULXU.W @Rn, Rd
+:MULXU.W @ea_reg,op_reg is ea=0b1101 & op_code=0b10101 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3 = zext(ea_reg);        # address from Rn
+    local val:2   = *[ram]:2 addr;     # fetch word
+    op_reg = op_reg * val;
+}
+
+# MULXU.W @(d:8,Rn), Rd
+:MULXU.W @(disp8,ea_reg),op_reg is ea=0b1110 & op_code=0b10101 & Sz=1 & ea_reg & disp8 & op_reg
+{
+    local addr:3   = zext(ea_reg) + sext(disp8:1);
+    local val:2     = *[ram]:2 addr;
+    op_reg = op_reg * val;
+}
+
+# MULXU.W @(d:16,Rn), Rd
+:MULXU.W @(disp16_32,ea_reg_32),op_reg_32 is ea_32=0b1111 & op_code_32=0b10101 & Sz_32=1 & ea_reg_32 & disp16_32 & op_reg_32
+{
+    local addr:3   = zext(ea_reg_32) + sext(disp16_32:2);
+    local val:2     = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 * val;
+}
+
+# MULXU.W @-Rn, Rd
+:MULXU.W @-ea_reg,op_reg is ea=0b1011 & op_code=0b10101 & Sz=1 & ea_reg & op_reg
+{
+    ea_reg = ea_reg - 2;         # pre-decrement (word)
+    local addr:3  = zext(ea_reg);
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg * val;
+}
+
+# MULXU.W @Rn+, Rd
+:MULXU.W @ea_reg+,op_reg is ea=0b1100 & op_code=0b10101 & Sz=1 & ea_reg & op_reg
+{
+    local addr:3  = zext(ea_reg);        # use original Rn
+    local val:2    = *[ram]:2 addr;
+    ea_reg = ea_reg + 2;           # post-increment (word)
+    op_reg = op_reg * val;
+}
+
+# MULXU.W @aa:8, Rd
+:MULXU.W @(disp8),op_reg is ea=0b0000 & ea_reg=0b101 & op_code=0b10101 & Sz=1 & disp8 & op_reg
+{
+    local addr:3  = 0xFF00 | zext(disp8:1);   # absolute 8-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg = op_reg * val;
+}
+
+# MULXU.W @aa:16, Rd
+:MULXU.W @(disp16_32),op_reg_32 is ea_32=0b0001 & ea_reg_32=0b101 & op_code_32=0b10101 & Sz_32=1 & disp16_32 & op_reg_32
+{
+    local addr:3  = zext(disp16_32:2);       # absolute 16-bit address
+    local val:2    = *[ram]:2 addr;
+    op_reg_32 = op_reg_32 * val;
+}
+
+# MULXU.W #xx:16, Rd
+:MULXU.W "#"imm16_32,op_reg_32 is ea_32=0b0000 & ea_reg_32=0b100 & op_code_32=0b10101 & Sz_32=1 & imm16_32 & op_reg_32
+{
+    op_reg_32 = op_reg_32 * imm16_32:2;
 }
